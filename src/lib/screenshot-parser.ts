@@ -65,9 +65,13 @@ const OUTPUT_SCHEMA = {
   },
 } as const
 
-const PROMPT = `These are screenshots of sports bet slips (Dutch or English bookmaker apps such as Bet365, Unibet or BetCity) for the FIFA World Cup 2026.
+const PROMPT = `These are screenshots of sports bet slips (Dutch or English bookmaker apps such as Bet365, Unibet, BetCity, Toto or 711) for the FIFA World Cup 2026.
 
 Extract every bet visible across all screenshots. Amounts use Dutch formatting ("€15,00" = 15.00). A bet placed with "wedtegoed" or "bet credit" is a free bet. For each leg, copy team, player, market and selection text exactly as displayed. If the same bet is partially visible in two screenshots, report it once.`
+
+const TEXT_PROMPT = `Below is text copied from the "My Bets" page of a Dutch or English bookmaker (Bet365, Unibet, BetCity, Toto, 711, ...) containing sports bets for the FIFA World Cup 2026. The text is messy because it was copied straight from the page — navigation labels and promotional text may be mixed in.
+
+Extract every distinct bet. Amounts may use Dutch ("€15,00") or English ("€15.00") formatting. A bet placed with "wedtegoed" or "bet credit" is a free bet. For each leg, copy team, player, market and selection text exactly as displayed. Report each bet once.`
 
 type MediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
 
@@ -103,23 +107,22 @@ interface RawBet {
   legs: RawLeg[]
 }
 
-export async function parseScreenshots(apiKey: string, files: File[]): Promise<ParsedBet[]> {
+async function extract(apiKey: string, content: Anthropic.ContentBlockParam[]): Promise<ParsedBet[]> {
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
-  const images = await Promise.all(files.map(toImageBlock))
 
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 16000,
     thinking: { type: 'adaptive' },
     output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
-    messages: [{ role: 'user', content: [...images, { type: 'text', text: PROMPT }] }],
+    messages: [{ role: 'user', content }],
   })
 
   if (response.stop_reason === 'refusal') {
-    throw new Error('The model declined to read this image. Try a clearer screenshot of the bet slip.')
+    throw new Error('The model declined to read this input. Try a clearer copy of the bet slip.')
   }
   const text = response.content.find((b) => b.type === 'text')?.text
-  if (!text) throw new Error('No bets could be read from the screenshot.')
+  if (!text) throw new Error('No bets could be read.')
 
   const raw = JSON.parse(text) as { bets: RawBet[] }
   return raw.bets.map((b) => {
@@ -156,4 +159,15 @@ export async function parseScreenshots(apiKey: string, files: File[]): Promise<P
       legs,
     }
   })
+}
+
+export async function parseScreenshots(apiKey: string, files: File[]): Promise<ParsedBet[]> {
+  const images = await Promise.all(files.map(toImageBlock))
+  return extract(apiKey, [...images, { type: 'text', text: PROMPT }])
+}
+
+/** Universal import: text copied from any bookmaker's My Bets page. */
+export function parseSlipText(apiKey: string, pasted: string): Promise<ParsedBet[]> {
+  const trimmed = pasted.length > 100_000 ? pasted.slice(0, 100_000) : pasted
+  return extract(apiKey, [{ type: 'text', text: `${TEXT_PROMPT}\n\n---\n\n${trimmed}` }])
 }

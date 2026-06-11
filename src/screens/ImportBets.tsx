@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { MatchSelect } from '../components/MatchSelect'
 import { parseBet365Html, type ParsedBet } from '../lib/bet365-parser'
-import { parseScreenshots } from '../lib/screenshot-parser'
+import { parseScreenshots, parseSlipText } from '../lib/screenshot-parser'
 import { SQUADS } from '../data/players'
 import { useData } from '../lib/data'
 
@@ -22,8 +22,9 @@ import { BET_TYPE_LABELS, BET_TYPE_OPTIONS, MARKET_LABELS } from '../lib/types'
 export function ImportBets() {
   const { bookmakers } = useData()
   const [step, setStep] = useState<'input' | 'review'>('input')
-  const [mode, setMode] = useState<'photo' | 'html'>('photo')
+  const [mode, setMode] = useState<'photo' | 'text' | 'html'>('photo')
   const [html, setHtml] = useState('')
+  const [pasted, setPasted] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('anthropicKey') ?? '')
   const [bookmakerId, setBookmakerId] = useState(() => localStorage.getItem('lastBookmaker') ?? '')
@@ -45,17 +46,16 @@ export function ImportBets() {
     }
   }
 
-  const parsePhotos = async () => {
+  const parseWithAi = async (run: (key: string) => Promise<ParsedBet[]>, emptyMessage: string) => {
     setError(null)
     if (!bookmakerId) return setError('Pick the bookmaker these bets belong to.')
     if (!apiKey.trim()) return setError('Paste your Anthropic API key first (stored only on this device).')
-    if (files.length === 0) return setError('Pick at least one screenshot.')
     setBusy(true)
     try {
       localStorage.setItem('anthropicKey', apiKey.trim())
-      const parsed = await parseScreenshots(apiKey.trim(), files)
+      const parsed = await run(apiKey.trim())
       if (parsed.length === 0) {
-        setError('No bets could be read from the screenshot(s). Try a clearer, full-slip screenshot.')
+        setError(emptyMessage)
       } else {
         setBets(parsed)
         setStep('review')
@@ -67,6 +67,22 @@ export function ImportBets() {
     }
   }
 
+  const parsePhotos = () => {
+    if (files.length === 0) return setError('Pick at least one screenshot.')
+    return parseWithAi(
+      (key) => parseScreenshots(key, files),
+      'No bets could be read from the screenshot(s). Try a clearer, full-slip screenshot.',
+    )
+  }
+
+  const parsePasted = () => {
+    if (!pasted.trim()) return setError('Paste the copied text first.')
+    return parseWithAi(
+      (key) => parseSlipText(key, pasted),
+      'No bets found in that text. Make sure you copied the whole My Bets page.',
+    )
+  }
+
   if (step === 'review') {
     return <Review bets={bets} setBets={setBets} bookmakerId={bookmakerId} onBack={() => setStep('input')} />
   }
@@ -76,7 +92,7 @@ export function ImportBets() {
       <h2 className="text-lg font-semibold">Import bets</h2>
 
       <div className="flex gap-1 rounded-xl border border-white/10 bg-black/30 p-1 text-sm font-medium">
-        {([['photo', '📸 Screenshot'], ['html', '🧾 Bet365 HTML']] as const).map(([m, label]) => (
+        {([['photo', '📸 Screenshot'], ['text', '📋 Paste text'], ['html', '🧾 Bet365 HTML']] as const).map(([m, label]) => (
           <button key={m} onClick={() => setMode(m)}
             className={`grow rounded-lg py-1.5 transition-colors ${
               mode === m ? 'bg-emerald-500/20 text-emerald-300' : 'text-neutral-500 hover:text-neutral-300'
@@ -126,6 +142,32 @@ export function ImportBets() {
           {error && <p className="text-sm text-rose-400">{error}</p>}
           <button className="btn w-full" onClick={() => void parsePhotos()} disabled={busy}>
             {busy ? 'Reading screenshots… (can take ~30s)' : 'Read screenshots'}
+          </button>
+        </>
+      ) : mode === 'text' ? (
+        <>
+          <div className="card space-y-2 text-sm text-neutral-300">
+            <p className="lbl mb-0">Works with every bookmaker</p>
+            <p>
+              Open <span className="text-neutral-100">My Bets</span> at BetCity, Toto, Unibet, 711
+              or any other bookie, select the whole page (<span className="text-neutral-100">Ctrl/Cmd+A</span>),
+              copy, and paste it below. Claude untangles the text into bets you can review before
+              saving. Uses your API key — a few cents per import.
+            </p>
+          </div>
+          <div>
+            <label className="lbl">Anthropic API key (stays on this device)</label>
+            <input className="input" type="password" placeholder="sk-ant-…"
+              value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+          </div>
+          <div>
+            <label className="lbl">Copied text</label>
+            <textarea className="input h-48 text-xs" placeholder="Paste the whole My Bets page here…"
+              value={pasted} onChange={(e) => setPasted(e.target.value)} />
+          </div>
+          {error && <p className="text-sm text-rose-400">{error}</p>}
+          <button className="btn w-full" onClick={() => void parsePasted()} disabled={busy}>
+            {busy ? 'Reading bets… (can take ~30s)' : 'Read bets from text'}
           </button>
         </>
       ) : (
