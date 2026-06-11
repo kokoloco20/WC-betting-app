@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
+import confetti from 'canvas-confetti'
 import { BetCard } from '../components/BetCard'
 import { matchByNumber } from '../data/matches'
 import { useData } from '../lib/data'
 import { betSearchText, legDescription } from '../lib/describe'
+import { isReadyToSettle } from '../lib/ready'
 import { eur } from '../lib/format'
 import { deriveStatus, potentialPayout, riskedStake } from '../lib/money'
 import type { Bet, BetType, LegResult } from '../lib/types'
@@ -47,6 +49,11 @@ export function OpenBets() {
       <div className="grid gap-4 lg:grid-cols-2">
         {open.map((bet) => (
           <BetCard key={bet.id} bet={bet}>
+            {isReadyToSettle(bet) && (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
+                ⏱️ Matches finished — ready to settle
+              </p>
+            )}
             <BetActions bet={bet} />
           </BetCard>
         ))}
@@ -106,11 +113,20 @@ function SettlePanel({ bet, onClose }: { bet: Bet; onClose: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const run = async (fn: () => Promise<void>) => {
+  const celebrate = () =>
+    confetti({
+      particleCount: 140,
+      spread: 80,
+      origin: { y: 0.7 },
+      colors: ['#10b981', '#84cc16', '#7c3aed', '#e11d48', '#ffffff'],
+    })
+
+  const run = async (fn: () => Promise<void>, win = false) => {
     setError(null)
     setBusy(true)
     try {
       await fn()
+      if (win) celebrate()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setBusy(false)
@@ -119,17 +135,19 @@ function SettlePanel({ bet, onClose }: { bet: Bet; onClose: () => void }) {
 
   // quick settle: mark every leg at once, payout computed automatically
   const quick = (result: 'won' | 'lost') =>
-    run(() =>
-      settleBet(bet, Object.fromEntries(bet.legs.map((l) => [l.id, result])), {
-        payout: result === 'won' ? potentialPayout(bet) : 0,
-      }),
+    run(
+      () =>
+        settleBet(bet, Object.fromEntries(bet.legs.map((l) => [l.id, result])), {
+          payout: result === 'won' ? potentialPayout(bet) : 0,
+        }),
+      result === 'won',
     )
 
   const saveCashout = () => {
     const amount = Number(payout)
     if (payout === '' || Number.isNaN(amount) || amount < 0)
       return setError('Enter the cash-out amount you received.')
-    return run(() => settleBet(bet, results, { cashedOut: true, payout: amount }))
+    return run(() => settleBet(bet, results, { cashedOut: true, payout: amount }), amount > riskedStake(bet))
   }
 
   // per-leg path (optional, more precise stats)
@@ -137,7 +155,7 @@ function SettlePanel({ bet, onClose }: { bet: Bet; onClose: () => void }) {
   const detailPayout = derived === 'won' ? potentialPayout(bet) : derived === 'void' ? riskedStake(bet) : 0
   const saveDetail = () => {
     if (derived === 'pending') return setError('Set every leg to won/lost/void first.')
-    return run(() => settleBet(bet, results, { payout: detailPayout }))
+    return run(() => settleBet(bet, results, { payout: detailPayout }), derived === 'won')
   }
 
   return (

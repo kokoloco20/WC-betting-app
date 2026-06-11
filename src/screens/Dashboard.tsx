@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react'
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { MATCHES } from '../data/matches'
 import { useData } from '../lib/data'
 import type { Drill } from '../lib/filters'
 import { eur, matchLabel, pct, profitColor, signedEur, stagePrefix } from '../lib/format'
 import { betProfit } from '../lib/money'
+import { isReadyToSettle } from '../lib/ready'
 import {
   cumulativeProfit,
+  highlights,
   profitByBetType,
   profitByBookmaker,
+  profitByDay,
   profitByLegCount,
   profitByMarket,
   profitByPlayer,
@@ -17,7 +20,7 @@ import {
   type LeaderRow,
 } from '../lib/stats'
 
-export function Dashboard({ onDrill }: { onDrill: (d: Drill) => void }) {
+export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void; onOpenBets: () => void }) {
   const { bets, players, bookmakers, loading } = useData()
 
   const t = useMemo(() => totals(bets), [bets])
@@ -57,8 +60,26 @@ export function Dashboard({ onDrill }: { onDrill: (d: Drill) => void }) {
   const heroBorder =
     t.profit > 0 ? '!border-emerald-500/20' : t.profit < 0 ? '!border-rose-500/20' : '!border-sky-500/20'
 
+  const readyCount = bets.filter((b) => isReadyToSettle(b)).length
+  const hl = highlights(bets)
+  const days = profitByDay(bets)
+
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      {/* Bets whose matches have finished */}
+      {readyCount > 0 && (
+        <button
+          className="card flex items-center justify-between !border-amber-500/30 !py-3 text-left transition-transform active:scale-[0.99] lg:col-span-2"
+          onClick={onOpenBets}
+        >
+          <span className="text-sm">
+            ⏱️ <span className="font-semibold text-amber-300">{readyCount} bet{readyCount === 1 ? '' : 's'}</span>{' '}
+            <span className="text-neutral-300">ready to settle — the matches are finished</span>
+          </span>
+          <span className="text-amber-300">→</span>
+        </button>
+      )}
+
       {/* Hero */}
       <div className={`card relative overflow-hidden !p-5 ${heroBorder}`}>
         <div className={`pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full blur-2xl ${heroGlow}`} />
@@ -103,6 +124,51 @@ export function Dashboard({ onDrill }: { onDrill: (d: Drill) => void }) {
                 <Area type="monotone" dataKey="cumulative" stroke="#10b981" strokeWidth={2.5}
                   fill="url(#profitFill)" dot={false} />
               </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Streak & highlights */}
+      {hl.streakType && (
+        <div className="card">
+          <p className="lbl">Form</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className={`num text-2xl font-extrabold ${hl.streakType === 'won' ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {hl.streakType === 'won' ? '🔥' : '❄️'} {hl.streakType === 'won' ? 'W' : 'L'}{hl.streak}
+            </span>
+            <span className="badge num">best win <span className="ml-1 text-emerald-400">{signedEur(hl.biggestWin)}</span></span>
+            <span className="badge num">worst loss <span className="ml-1 text-rose-400">{signedEur(hl.biggestLoss)}</span></span>
+          </div>
+        </div>
+      )}
+
+      {/* Profit per day */}
+      {days.length > 1 && (
+        <div className="card">
+          <p className="lbl">Profit per day</p>
+          <div className="h-40">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={days} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
+                <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="day" stroke="#7a7490" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#7a7490" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip
+                  formatter={(v) => [eur(Number(v)), 'Profit']}
+                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                  contentStyle={{
+                    background: 'var(--surface-solid)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 12,
+                    color: 'var(--color-neutral-100)',
+                  }}
+                />
+                <Bar dataKey="profit" radius={[6, 6, 0, 0]}>
+                  {days.map((d, i) => (
+                    <Cell key={i} fill={d.profit >= 0 ? '#10b981' : '#f43f5e'} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>

@@ -101,6 +101,7 @@ function Shell() {
             setDrill(d)
             setTab('history')
           }}
+          onOpenBets={() => setTab('open')}
         />
       )}
       {tab === 'open' && <OpenBets />}

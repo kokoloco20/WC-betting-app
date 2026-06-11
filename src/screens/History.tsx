@@ -8,6 +8,7 @@ import { betSearchText } from '../lib/describe'
 import type { Drill } from '../lib/filters'
 import { kickoffLocal, STAGE_LABELS, matchLabel } from '../lib/format'
 import { betProfit } from '../lib/money'
+import { shareWinCard } from '../lib/sharecard'
 import { legTeamCode } from '../lib/stats'
 import type { Bet, BetType, Market } from '../lib/types'
 import { BET_TYPE_LABELS, MARKET_LABELS } from '../lib/types'
@@ -171,7 +172,7 @@ function FilterSelect({
 }
 
 function SettledActions({ bet }: { bet: Bet }) {
-  const { reopenBet, deleteBet } = useData()
+  const { reopenBet, deleteBet, players, knockout, bookmakers } = useData()
   const [error, setError] = useState<string | null>(null)
   if (bet.status === 'pending') return null
   const act = async (fn: () => Promise<void>) => {
@@ -182,8 +183,22 @@ function SettledActions({ bet }: { bet: Bet }) {
       setError(err instanceof Error ? err.message : String(err))
     }
   }
+  const isWin = (betProfit(bet) ?? 0) > 0
   return (
     <div className="flex gap-2 text-xs">
+      {isWin && (
+        <button
+          className="font-medium text-emerald-400 hover:text-emerald-300"
+          onClick={() =>
+            act(() =>
+              shareWinCard(bet, players, knockout,
+                bookmakers.find((b) => b.id === bet.bookmaker_id)?.name ?? ''),
+            )
+          }
+        >
+          📤 share win
+        </button>
+      )}
       <button className="text-neutral-500 hover:text-neutral-300" onClick={() => act(() => reopenBet(bet))}>
         reopen
       </button>

@@ -128,6 +128,57 @@ export function profitByLegCount(bets: Bet[]): LeaderRow[] {
   return toRows(acc).sort((a, b) => a.key.localeCompare(b.key))
 }
 
+export interface Highlights {
+  streak: number
+  streakType: 'won' | 'lost' | null
+  biggestWin: number
+  biggestLoss: number
+}
+
+/** Current win/loss streak and best/worst single results (void bets ignored). */
+export function highlights(bets: Bet[]): Highlights {
+  const settled = bets
+    .filter((b) => b.status !== 'pending' && b.status !== 'void')
+    .sort((a, b) => (b.settled_at ?? b.placed_at).localeCompare(a.settled_at ?? a.placed_at))
+  let streak = 0
+  let streakType: 'won' | 'lost' | null = null
+  for (const b of settled) {
+    const t = (betProfit(b) ?? 0) > 0 ? 'won' : 'lost'
+    if (streakType === null) streakType = t
+    if (t !== streakType) break
+    streak++
+  }
+  const profits = settled.map((b) => betProfit(b) ?? 0)
+  return {
+    streak,
+    streakType,
+    biggestWin: profits.length ? Math.max(0, ...profits) : 0,
+    biggestLoss: profits.length ? Math.min(0, ...profits) : 0,
+  }
+}
+
+export interface DayProfit {
+  day: string // e.g. "13 jun"
+  profit: number
+}
+
+/** Profit summed per settlement day, oldest first. */
+export function profitByDay(bets: Bet[]): DayProfit[] {
+  const acc = new Map<string, { day: string; profit: number }>()
+  for (const b of bets) {
+    if (b.status === 'pending') continue
+    const date = new Date(b.settled_at ?? b.placed_at)
+    const key = date.toISOString().slice(0, 10)
+    const day = date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
+    const cur = acc.get(key) ?? { day, profit: 0 }
+    cur.profit += betProfit(b) ?? 0
+    acc.set(key, cur)
+  }
+  return [...acc.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, v]) => v)
+}
+
 export interface ProfitPoint {
   date: string // ISO timestamp of settlement
   cumulative: number
