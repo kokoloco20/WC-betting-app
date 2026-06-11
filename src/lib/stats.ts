@@ -54,7 +54,7 @@ function accumulate(
 }
 
 /** Team a leg's money belongs to: explicit team, else the player's team. */
-function legTeamCode(leg: Bet['legs'][number], players: Map<string, Player>): string | null {
+export function legTeamCode(leg: Bet['legs'][number], players: Map<string, Player>): string | null {
   if (leg.team_code) return leg.team_code
   if (leg.player_id) return players.get(leg.player_id)?.team_code ?? null
   return null
