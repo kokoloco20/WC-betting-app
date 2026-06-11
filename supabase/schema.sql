@@ -4,7 +4,8 @@
 create table bookmakers (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users (id),
-  name text not null
+  name text not null,
+  unique (user_id, name)
 );
 
 create table players (
@@ -37,7 +38,7 @@ create table legs (
   market text not null check (market in (
     'shots_on_target', 'shots', 'passes', 'tackles', 'goals', 'assists',
     'cards', 'corners', 'match_result', 'over_under_goals', 'btts',
-    'outright', 'other'
+    'outright', 'bet_builder', 'other'
   )),
   player_id uuid references players (id),
   team_code text,

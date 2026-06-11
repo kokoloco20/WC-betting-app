@@ -1,9 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { MatchSelect } from '../components/MatchSelect'
-import { TEAMS } from '../data/teams'
+import { SQUADS } from '../data/players'
+import { TEAMS, teamByCode } from '../data/teams'
 import { useData } from '../lib/data'
 import type { BetType, Market } from '../lib/types'
-import { BET_TYPE_LABELS, MARKET_LABELS } from '../lib/types'
+import { BET_TYPE_LABELS, MARKET_LABELS, MARKET_OPTIONS } from '../lib/types'
+
+function findSquadPlayer(name: string) {
+  const n = name.trim().toLowerCase()
+  return n ? SQUADS.find((p) => p.name.toLowerCase() === n) : undefined
+}
 
 interface LegDraft {
   matchNumber: number | null
@@ -42,6 +48,12 @@ export function NewBet() {
   const [saved, setSaved] = useState(false)
 
   const playerList = [...players.values()]
+  // autocomplete: every squad player, plus custom ones added earlier
+  const playerOptions = useMemo(() => {
+    const names = new Set(SQUADS.map((p) => p.name))
+    for (const p of players.values()) names.add(p.name)
+    return [...names].sort()
+  }, [players])
   const isOutright = betType === 'outright'
   const isBuilder = betType === 'bet_builder'
   const canAddLegs = MULTI_LEG_TYPES.includes(betType)
@@ -77,8 +89,10 @@ export function NewBet() {
           if (existing) {
             playerId = existing.id
           } else {
-            if (!l.playerTeam) throw new Error(`Pick a team for new player “${name}”.`)
-            playerId = (await addPlayer(name, l.playerTeam)).id
+            const squad = findSquadPlayer(name)
+            const team = squad?.team ?? l.playerTeam
+            if (!team) throw new Error(`Pick a team for new player “${name}”.`)
+            playerId = (await addPlayer(squad?.name ?? name, team)).id
           }
         }
         legInputs.push({
@@ -161,14 +175,16 @@ export function NewBet() {
       )}
 
       <datalist id="player-options">
-        {playerList.map((p) => (
-          <option key={p.id} value={p.name} />
+        {playerOptions.map((name) => (
+          <option key={name} value={name} />
         ))}
       </datalist>
 
       {legs.map((leg, i) => {
-        const newPlayer =
+        const squadMatch = findSquadPlayer(leg.playerName)
+        const unknownPlayer =
           leg.playerName.trim() &&
+          !squadMatch &&
           !playerList.some((p) => p.name.toLowerCase() === leg.playerName.trim().toLowerCase())
         return (
           <div key={i} className="card space-y-3">
@@ -187,7 +203,7 @@ export function NewBet() {
               <div>
                 <label className="lbl">Market</label>
                 <select className="input" value={leg.market} onChange={(e) => updateLeg(i, { market: e.target.value as Market })}>
-                  {(Object.keys(MARKET_LABELS) as Market[]).map((m) => (
+                  {MARKET_OPTIONS.map((m) => (
                     <option key={m} value={m}>{MARKET_LABELS[m]}</option>
                   ))}
                 </select>
@@ -202,7 +218,14 @@ export function NewBet() {
                 <input className="input" list="player-options" value={leg.playerName}
                   placeholder="e.g. Depay" onChange={(e) => updateLeg(i, { playerName: e.target.value })} />
               </div>
-              {newPlayer ? (
+              {squadMatch ? (
+                <div>
+                  <label className="lbl">Player team</label>
+                  <p className="input border-emerald-900 text-emerald-300">
+                    {teamByCode.get(squadMatch.team)?.name} · {squadMatch.pos}
+                  </p>
+                </div>
+              ) : unknownPlayer ? (
                 <div>
                   <label className="lbl">New player's team</label>
                   <select className="input" value={leg.playerTeam} onChange={(e) => updateLeg(i, { playerTeam: e.target.value })}>

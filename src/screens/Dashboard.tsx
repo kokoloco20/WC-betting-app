@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { MATCHES } from '../data/matches'
 import { useData } from '../lib/data'
 import type { Drill } from '../lib/filters'
-import { eur, pct, profitColor, signedEur } from '../lib/format'
+import { eur, matchLabel, pct, profitColor, signedEur, stagePrefix } from '../lib/format'
+import { betProfit } from '../lib/money'
 import {
   cumulativeProfit,
   profitByBetType,
@@ -19,113 +21,213 @@ export function Dashboard({ onDrill }: { onDrill: (d: Drill) => void }) {
   const { bets, players, bookmakers, loading } = useData()
 
   const t = useMemo(() => totals(bets), [bets])
+  const record = useMemo(() => {
+    const settled = bets.filter((b) => b.status !== 'pending' && b.status !== 'void')
+    const wins = settled.filter((b) => (betProfit(b) ?? 0) > 0).length
+    return { wins, losses: settled.length - wins, open: bets.length - settled.length }
+  }, [bets])
   const series = useMemo(
     () =>
-      cumulativeProfit(bets).map((p) => ({
+      cumulativeProfit(bets).map((p, i) => ({
         ...p,
+        n: i + 1,
         label: new Date(p.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }),
       })),
     [bets],
   )
-  const bookmakerNames = useMemo(
-    () => new Map(bookmakers.map((b) => [b.id, b.name])),
-    [bookmakers],
-  )
+  const bookmakerNames = useMemo(() => new Map(bookmakers.map((b) => [b.id, b.name])), [bookmakers])
 
+  const teamRows = useMemo(() => profitByTeam(bets, players), [bets, players])
+  const playerRows = useMemo(() => profitByPlayer(bets, players), [bets, players])
   const boards = useMemo(
     () =>
       [
-        { title: 'Teams', kind: 'team', rows: profitByTeam(bets, players) },
-        { title: 'Players', kind: 'player', rows: profitByPlayer(bets, players) },
         { title: 'Markets', kind: 'market', rows: profitByMarket(bets) },
         { title: 'Bet types', kind: 'betType', rows: profitByBetType(bets) },
         { title: 'Bookmakers', kind: 'bookmaker', rows: profitByBookmaker(bets, bookmakerNames) },
-        { title: 'Number of legs', kind: 'legs', rows: profitByLegCount(bets) },
+        { title: 'Parlay size', kind: 'legs', rows: profitByLegCount(bets) },
       ] as const,
-    [bets, players, bookmakerNames],
+    [bets, bookmakerNames],
   )
 
   if (loading) return <p className="text-neutral-400">Loading…</p>
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Dashboard</h2>
-
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Profit" value={signedEur(t.profit)} color={profitColor(t.profit)} />
-        <StatCard label="ROI" value={t.roi === null ? '—' : pct(t.roi)} color={profitColor(t.roi ?? 0)} />
-        <StatCard label="Total staked" value={eur(t.staked)} />
-        <StatCard label="Win rate" value={t.winRate === null ? '—' : pct(t.winRate)} />
+      {/* Hero */}
+      <div className="card relative overflow-hidden !p-5">
+        <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-emerald-500/10 blur-2xl" />
+        <p className="lbl">Tournament profit</p>
+        <p className={`num text-4xl font-extrabold tracking-tight ${profitColor(t.profit)}`}>
+          {signedEur(t.profit)}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Chip label="ROI" value={t.roi === null ? '—' : pct(t.roi)} accent={t.roi !== null && t.roi > 0} />
+          <Chip label="Staked" value={eur(t.staked)} />
+          <Chip label="Win rate" value={t.winRate === null ? '—' : pct(t.winRate)} />
+          <Chip label="Record" value={`${record.wins}W – ${record.losses}L · ${record.open} open`} />
+        </div>
       </div>
 
+      {/* Profit curve */}
       {series.length > 1 && (
         <div className="card">
           <p className="lbl">Profit over time</p>
-          <div className="h-48">
+          <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={series} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-                <CartesianGrid stroke="#262626" strokeDasharray="3 3" />
-                <XAxis dataKey="label" stroke="#737373" fontSize={11} />
-                <YAxis stroke="#737373" fontSize={11} />
+              <AreaChart data={series} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
+                <defs>
+                  <linearGradient id="profitFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#ffffff10" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" stroke="#525252" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#525252" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip
-                  formatter={(v) => [eur(Number(v)), 'Cumulative profit']}
-                  contentStyle={{ background: '#171717', border: '1px solid #404040', borderRadius: 8 }}
+                  formatter={(v) => [eur(Number(v)), 'Profit']}
+                  labelFormatter={(l) => `Settled ${l}`}
+                  contentStyle={{ background: '#101513', border: '1px solid #ffffff20', borderRadius: 12 }}
                 />
-                <Line type="monotone" dataKey="cumulative" stroke="#10b981" strokeWidth={2} dot={false} />
-              </LineChart>
+                <Area type="monotone" dataKey="cumulative" stroke="#10b981" strokeWidth={2.5}
+                  fill="url(#profitFill)" dot={false} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
       )}
 
-      {boards.map((b) => (
-        <Board key={b.kind} title={b.title} rows={b.rows}
-          onPick={(key) => onDrill({ kind: b.kind, key })} />
-      ))}
+      <TodayStrip />
+
+      {/* Heroes & villains */}
+      {(teamRows.length > 0 || playerRows.length > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          <Podium icon="🏆" label="Best team" row={teamRows[0]} onPick={(k) => onDrill({ kind: 'team', key: k })} />
+          <Podium icon="💸" label="Worst team" row={worst(teamRows)} onPick={(k) => onDrill({ kind: 'team', key: k })} />
+          <Podium icon="⭐" label="Best player" row={playerRows[0]} onPick={(k) => onDrill({ kind: 'player', key: k })} />
+          <Podium icon="🧨" label="Worst player" row={worst(playerRows)} onPick={(k) => onDrill({ kind: 'player', key: k })} />
+        </div>
+      )}
+
+      {teamRows.length > 1 && (
+        <BarBoard title="All teams" rows={teamRows} onPick={(k) => onDrill({ kind: 'team', key: k })} />
+      )}
+      {playerRows.length > 1 && (
+        <BarBoard title="All players" rows={playerRows} onPick={(k) => onDrill({ kind: 'player', key: k })} />
+      )}
+      {boards.map(
+        (b) =>
+          b.rows.length > 0 && (
+            <BarBoard key={b.kind} title={b.title} rows={b.rows} onPick={(k) => onDrill({ kind: b.kind, key: k })} />
+          ),
+      )}
 
       {bets.length === 0 && (
-        <p className="text-neutral-400">No bets yet — add your first one under “New”.</p>
+        <div className="card text-center">
+          <p className="text-3xl">🎯</p>
+          <p className="mt-1 font-medium">No bets yet</p>
+          <p className="text-sm text-neutral-400">Hit “New” below and log your first one.</p>
+        </div>
       )}
     </div>
   )
 }
 
-function StatCard({ label, value, color = 'text-neutral-100' }: { label: string; value: string; color?: string }) {
+function worst(rows: LeaderRow[]): LeaderRow | undefined {
+  const last = rows[rows.length - 1]
+  // only show a "worst" if it's actually different from the best
+  return rows.length > 1 ? last : undefined
+}
+
+function Chip({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="card">
-      <p className="lbl">{label}</p>
-      <p className={`text-xl font-bold ${color}`}>{value}</p>
-    </div>
+    <span className={`badge num !py-1 ${accent ? '!border-emerald-500/40 !bg-emerald-500/10 text-emerald-300' : ''}`}>
+      <span className="mr-1 text-neutral-500">{label}</span>
+      {value}
+    </span>
   )
 }
 
-function Board({ title, rows, onPick }: { title: string; rows: LeaderRow[]; onPick: (key: string) => void }) {
+function Podium({
+  icon, label, row, onPick,
+}: {
+  icon: string
+  label: string
+  row: LeaderRow | undefined
+  onPick: (key: string) => void
+}) {
+  if (!row) return null
+  return (
+    <button className="card text-left transition-transform active:scale-[0.98]" onClick={() => onPick(row.key)}>
+      <p className="text-xl">{icon}</p>
+      <p className="lbl mt-1 mb-0">{label}</p>
+      <p className="truncate font-semibold">{row.label}</p>
+      <p className={`num text-sm font-bold ${profitColor(row.profit)}`}>{signedEur(row.profit)}</p>
+    </button>
+  )
+}
+
+function BarBoard({ title, rows, onPick }: { title: string; rows: LeaderRow[]; onPick: (key: string) => void }) {
   const [showAll, setShowAll] = useState(false)
-  if (rows.length === 0) return null
-  const visible = showAll || rows.length <= 6 ? rows : [...rows.slice(0, 3), ...rows.slice(-2)]
+  const max = Math.max(...rows.map((r) => Math.abs(r.profit)), 0.01)
+  const visible = showAll ? rows : rows.slice(0, 6)
   return (
     <div className="card">
       <p className="lbl">{title}</p>
-      <ul className="divide-y divide-neutral-800">
+      <ul className="space-y-1">
         {visible.map((r) => (
           <li key={r.key}>
             <button
-              className="flex w-full items-center justify-between py-1.5 text-sm hover:text-emerald-300"
+              className="relative flex w-full items-center justify-between overflow-hidden rounded-lg px-2.5 py-1.5 text-sm hover:bg-white/5"
               onClick={() => onPick(r.key)}
             >
-              <span className="text-neutral-200">
+              <span
+                className={`absolute inset-y-1 left-0 rounded-md ${r.profit >= 0 ? 'bg-emerald-500/15' : 'bg-rose-500/15'}`}
+                style={{ width: `${(Math.abs(r.profit) / max) * 100}%` }}
+              />
+              <span className="relative truncate text-neutral-200">
                 {r.label} <span className="text-xs text-neutral-500">({r.betCount})</span>
               </span>
-              <span className={`font-medium ${profitColor(r.profit)}`}>{signedEur(r.profit)}</span>
+              <span className={`num relative font-semibold ${profitColor(r.profit)}`}>{signedEur(r.profit)}</span>
             </button>
           </li>
         ))}
       </ul>
       {rows.length > 6 && (
-        <button className="mt-1 text-xs text-neutral-400 hover:text-neutral-200" onClick={() => setShowAll((s) => !s)}>
-          {showAll ? 'show less' : `show all ${rows.length}`}
+        <button className="mt-1.5 text-xs text-neutral-500 hover:text-neutral-300" onClick={() => setShowAll((s) => !s)}>
+          {showAll ? '− show less' : `+ show all ${rows.length}`}
         </button>
       )}
+    </div>
+  )
+}
+
+function TodayStrip() {
+  const { knockout } = useData()
+  const [today] = useState(() => new Date().toDateString())
+  const matches = useMemo(
+    () =>
+      MATCHES.filter((m) => new Date(m.kickoffUtc).toDateString() === today).sort((a, b) =>
+        a.kickoffUtc.localeCompare(b.kickoffUtc),
+      ),
+    [today],
+  )
+  if (matches.length === 0) return null
+  return (
+    <div className="card !p-3">
+      <p className="lbl ml-1">Today's matches</p>
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        {matches.map((m) => (
+          <div key={m.matchNumber} className="shrink-0 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
+            <p className="text-sm font-medium whitespace-nowrap">{matchLabel(m, knockout)}</p>
+            <p className="num text-xs text-neutral-500">
+              {stagePrefix(m)} ·{' '}
+              {new Date(m.kickoffUtc).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

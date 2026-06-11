@@ -1,29 +1,42 @@
 @import 'tailwindcss';
 
+@theme {
+  --font-sans: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
 body {
-  @apply bg-neutral-950 text-neutral-100 antialiased;
+  @apply bg-[#0a0e0c] text-neutral-100 antialiased;
+  font-family: var(--font-sans);
+  background-image:
+    radial-gradient(60rem 40rem at 85% -10%, rgb(16 185 129 / 0.1), transparent 60%),
+    radial-gradient(45rem 35rem at -15% 40%, rgb(16 185 129 / 0.05), transparent 60%);
+  background-attachment: fixed;
 }
 
 .card {
-  @apply rounded-xl border border-neutral-800 bg-neutral-900 p-4;
+  @apply rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-4 shadow-lg shadow-black/30 backdrop-blur-sm;
 }
 
 .btn {
-  @apply rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40;
+  @apply rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-4 py-2.5 font-semibold text-white shadow-md shadow-emerald-950/50 transition-all hover:from-emerald-400 hover:to-emerald-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .btn-ghost {
-  @apply rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:bg-neutral-800;
+  @apply rounded-xl border border-white/10 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:border-emerald-500/40 hover:bg-white/5;
 }
 
 .input {
-  @apply w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 focus:border-emerald-500 focus:outline-none;
+  @apply w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-100 transition-colors focus:border-emerald-500/60 focus:outline-none;
 }
 
 .lbl {
-  @apply mb-1 block text-xs font-medium tracking-wide text-neutral-400 uppercase;
+  @apply mb-1 block text-[11px] font-semibold tracking-widest text-neutral-500 uppercase;
 }
 
 .badge {
-  @apply inline-block rounded-full border border-neutral-700 px-2 py-0.5 text-xs text-neutral-300;
+  @apply inline-block rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-neutral-300;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
 }

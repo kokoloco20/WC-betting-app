@@ -15,7 +15,22 @@ export type Market =
   | 'over_under_goals'
   | 'btts'
   | 'outright'
+  | 'bet_builder'
   | 'other'
+
+/** The markets offered in the bet form, in display order. */
+export const MARKET_OPTIONS: Market[] = [
+  'shots_on_target',
+  'passes',
+  'tackles',
+  'goals',
+  'assists',
+  'match_result',
+  'over_under_goals',
+  'btts',
+  'outright',
+  'bet_builder',
+]
 
 export const BET_TYPE_LABELS: Record<BetType, string> = {
   straight: 'Straight',
@@ -35,9 +50,10 @@ export const MARKET_LABELS: Record<Market, string> = {
   cards: 'Cards',
   corners: 'Corners',
   match_result: 'Match result',
-  over_under_goals: 'Over/under goals',
+  over_under_goals: 'Over/under',
   btts: 'Both teams to score',
   outright: 'Outright',
+  bet_builder: 'Bet builder',
   other: 'Other',
 }
 

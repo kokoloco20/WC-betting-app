@@ -33,10 +33,18 @@ function Shell() {
   const { loadError, refresh } = useData()
 
   return (
-    <div className="mx-auto max-w-xl px-4 pt-4 pb-24">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-base font-bold">⚽ WC 2026 Bet Tracker</h1>
-        <button className="text-xs text-neutral-500 hover:text-neutral-300"
+    <div className="mx-auto max-w-xl px-4 pt-5 pb-28">
+      <header className="mb-5 flex items-center justify-between">
+        <h1 className="flex items-baseline gap-2 text-lg font-extrabold tracking-tight">
+          <span>⚽</span>
+          <span>
+            WC<span className="text-emerald-400">26</span>
+            <span className="ml-2 text-xs font-medium tracking-widest text-neutral-500 uppercase">
+              bet tracker
+            </span>
+          </span>
+        </h1>
+        <button className="text-xs text-neutral-600 transition-colors hover:text-neutral-300"
           onClick={() => void supabase?.auth.signOut()}>
           log out
         </button>
@@ -61,14 +69,16 @@ function Shell() {
       {tab === 'new' && <NewBet />}
       {tab === 'history' && <History drill={drill} onDrillChange={setDrill} />}
 
-      <nav className="fixed inset-x-0 bottom-0 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur">
-        <div className="mx-auto flex max-w-xl">
+      <nav className="fixed inset-x-0 bottom-3 px-4">
+        <div className="mx-auto flex max-w-md gap-1 rounded-2xl border border-white/10 bg-[#101513]/90 p-1.5 shadow-xl shadow-black/50 backdrop-blur-md">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex grow flex-col items-center gap-0.5 py-2 text-xs ${
-                tab === t.id ? 'text-emerald-400' : 'text-neutral-500'
+              className={`flex grow flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-medium transition-colors ${
+                tab === t.id
+                  ? 'bg-emerald-500/15 text-emerald-300'
+                  : 'text-neutral-500 hover:text-neutral-300'
               }`}
             >
               <span className="text-lg leading-none">{t.icon}</span>

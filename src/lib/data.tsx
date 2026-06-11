@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- provider + hook live together */
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
 import { deriveStatus } from './money'
 import type { Bet, BetStatus, BetType, Bookmaker, KnockoutTeams, Leg, LegResult, Market, Player } from './types'
@@ -60,6 +60,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [players, setPlayers] = useState<Map<string, Player>>(new Map())
   const [bets, setBets] = useState<Bet[]>([])
   const [knockout, setKnockout] = useState<Map<number, KnockoutTeams>>(new Map())
+  const seeding = useRef(false)
 
   const refresh = useCallback(async () => {
     if (!supabase) return
@@ -68,10 +69,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const first = await supabase.from('bookmakers').select('id, name').order('name')
       if (first.error) throw first.error
       let bk = first.data
-      if (!bk || bk.length === 0) {
+      if ((!bk || bk.length === 0) && !seeding.current) {
+        seeding.current = true // guard against the double-mount race
         const { error } = await supabase
           .from('bookmakers')
-          .insert(DEFAULT_BOOKMAKERS.map((name) => ({ name })))
+          .upsert(DEFAULT_BOOKMAKERS.map((name) => ({ name })), {
+            onConflict: 'user_id,name',
+            ignoreDuplicates: true,
+          })
         if (error) throw error
         const again = await supabase.from('bookmakers').select('id, name').order('name')
         if (again.error) throw again.error
