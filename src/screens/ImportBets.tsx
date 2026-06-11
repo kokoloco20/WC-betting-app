@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { MatchSelect } from '../components/MatchSelect'
 import { parseBet365Html, type ParsedBet } from '../lib/bet365-parser'
 import { parseScreenshots } from '../lib/screenshot-parser'
@@ -7,6 +7,14 @@ import { useData } from '../lib/data'
 
 const findSquadPlayer = (name: string) =>
   SQUADS.find((p) => p.name.toLowerCase() === name.trim().toLowerCase())
+
+/** Content fingerprint to recognize bets that were imported before. */
+function fingerprint(betType: string, stake: number, odds: number, legSigs: string[]): string {
+  return [betType, Number(stake).toFixed(2), Number(odds).toFixed(2), ...[...legSigs].sort()].join('|')
+}
+
+const legSig = (market: string, matchNumber: number | null, teamCode: string | null, line: string | null) =>
+  `${market}:${matchNumber ?? ''}:${teamCode ?? ''}:${(line ?? '').toLowerCase().trim()}`
 import { eur } from '../lib/format'
 import type { BetType, Market } from '../lib/types'
 import { BET_TYPE_LABELS, MARKET_LABELS } from '../lib/types'
@@ -170,6 +178,31 @@ function Review({
   const update = (id: string, patch: Partial<ParsedBet>) =>
     setBets(bets.map((b) => (b.id === id ? { ...b, ...patch } : b)))
 
+  // bets already in the database for this bookmaker, by content fingerprint
+  const { bets: existingBets } = useData()
+  const existingFps = useMemo(
+    () =>
+      new Set(
+        existingBets
+          .filter((b) => b.bookmaker_id === bookmakerId)
+          .map((b) =>
+            fingerprint(b.bet_type, b.stake, b.total_odds,
+              b.legs.map((l) => legSig(l.market, l.match_number, l.team_code, l.line))),
+          ),
+      ),
+    [existingBets, bookmakerId],
+  )
+  const isDuplicate = (b: ParsedBet) =>
+    existingFps.has(
+      fingerprint(b.betType, b.stake, b.totalOdds,
+        b.legs.map((l) => legSig(l.market, l.matchNumber, l.teamCode, l.line))),
+    )
+  // duplicates start out skipped; the user can re-include them
+  const [skipped, setSkipped] = useState<Set<string>>(
+    () => new Set(bets.filter(isDuplicate).map((b) => b.id)),
+  )
+  const toImport = bets.filter((b) => !skipped.has(b.id))
+
   // "type once, reuse after": existing player by name, else create from squad data
   const resolvePlayer = async (leg: ParsedBet['legs'][number]): Promise<string | null> => {
     const name = leg.playerName?.trim()
@@ -188,7 +221,7 @@ function Review({
     setErrors([])
     let ok = 0
     const failures: string[] = []
-    for (const bet of bets) {
+    for (const bet of toImport) {
       try {
         const legs = []
         for (const l of bet.legs) {
@@ -234,22 +267,41 @@ function Review({
     )
   }
 
+  const dupCount = bets.length - toImport.length
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{bets.length} bets found</h2>
+        <div>
+          <h2 className="text-lg font-semibold">{bets.length} bets found</h2>
+          {dupCount > 0 && (
+            <p className="text-xs text-amber-400">
+              {dupCount} look{dupCount === 1 ? 's' : ''} already imported — skipped automatically
+            </p>
+          )}
+        </div>
         <button className="btn-ghost" onClick={onBack}>← Back</button>
       </div>
       {bets.map((bet) => (
-        <BetReviewCard key={bet.id} bet={bet}
-          onChange={(patch) => update(bet.id, patch)}
-          onRemove={() => setBets(bets.filter((b) => b.id !== bet.id))} />
+        <div key={bet.id} className={skipped.has(bet.id) ? 'opacity-50' : undefined}>
+          {skipped.has(bet.id) && (
+            <div className="mb-1 flex items-center justify-between rounded-lg border border-amber-600/40 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
+              Already imported — will be skipped
+              <button className="underline"
+                onClick={() => setSkipped((s) => { const next = new Set(s); next.delete(bet.id); return next })}>
+                import anyway
+              </button>
+            </div>
+          )}
+          <BetReviewCard bet={bet}
+            onChange={(patch) => update(bet.id, patch)}
+            onRemove={() => setBets(bets.filter((b) => b.id !== bet.id))} />
+        </div>
       ))}
       {errors.map((e, i) => (
         <p key={i} className="text-sm text-rose-400">{e}</p>
       ))}
-      <button className="btn w-full" onClick={importAll} disabled={busy || bets.length === 0}>
-        {busy ? 'Importing…' : `Import ${bets.length} bet${bets.length === 1 ? '' : 's'}`}
+      <button className="btn w-full" onClick={importAll} disabled={busy || toImport.length === 0}>
+        {busy ? 'Importing…' : `Import ${toImport.length} bet${toImport.length === 1 ? '' : 's'}`}
       </button>
     </div>
   )
