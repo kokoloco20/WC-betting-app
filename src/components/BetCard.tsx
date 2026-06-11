@@ -31,6 +31,7 @@ export function BetCard({ bet, children }: { bet: Bet; children?: ReactNode }) {
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium">{bookmaker}</span>
           <span className="badge">{BET_TYPE_LABELS[bet.bet_type]}</span>
+          {bet.is_super_boost && <span className="badge !border-amber-500/50 !bg-amber-500/10 text-amber-300">⚡ Boost</span>}
           {bet.is_free_bet && <span className="badge border-amber-600 text-amber-400">Free bet</span>}
         </div>
         <div className="text-right text-sm">

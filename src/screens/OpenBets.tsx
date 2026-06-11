@@ -8,7 +8,7 @@ import { isReadyToSettle } from '../lib/ready'
 import { eur } from '../lib/format'
 import { deriveStatus, potentialPayout, riskedStake } from '../lib/money'
 import type { Bet, BetType, LegResult } from '../lib/types'
-import { BET_TYPE_LABELS } from '../lib/types'
+import { BET_TYPE_LABELS, BET_TYPE_OPTIONS } from '../lib/types'
 
 function earliestKickoff(bet: Bet): string {
   const times = bet.legs
@@ -242,6 +242,7 @@ function EditPanel({ bet, onClose }: { bet: Bet; onClose: () => void }) {
   const [stake, setStake] = useState(String(bet.stake))
   const [odds, setOdds] = useState(String(bet.total_odds))
   const [freeBet, setFreeBet] = useState(bet.is_free_bet)
+  const [superBoost, setSuperBoost] = useState(bet.is_super_boost)
   const [notes, setNotes] = useState(bet.notes ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -260,6 +261,7 @@ function EditPanel({ bet, onClose }: { bet: Bet; onClose: () => void }) {
         stake: stakeN,
         total_odds: oddsN,
         is_free_bet: freeBet,
+        is_super_boost: superBoost,
         notes: notes.trim() || null,
       })
       onClose()
@@ -283,7 +285,7 @@ function EditPanel({ bet, onClose }: { bet: Bet; onClose: () => void }) {
         <div>
           <label className="lbl">Bet type</label>
           <select className="input" value={betType} onChange={(e) => setBetType(e.target.value as BetType)}>
-            {(Object.keys(BET_TYPE_LABELS) as BetType[]).map((t) => (
+            {BET_TYPE_OPTIONS.map((t) => (
               <option key={t} value={t}>{BET_TYPE_LABELS[t]}</option>
             ))}
           </select>
@@ -303,6 +305,11 @@ function EditPanel({ bet, onClose }: { bet: Bet; onClose: () => void }) {
         <input type="checkbox" checked={freeBet} onChange={(e) => setFreeBet(e.target.checked)}
           className="h-4 w-4 accent-emerald-500" />
         Free bet / promo money
+      </label>
+      <label className="flex items-center gap-2 text-sm text-neutral-300">
+        <input type="checkbox" checked={superBoost} onChange={(e) => setSuperBoost(e.target.checked)}
+          className="h-4 w-4 accent-amber-500" />
+        ⚡ Super boost
       </label>
       <div>
         <label className="lbl">Notes</label>

@@ -20,14 +20,14 @@ export function betsToCsv(
   const bookmakerName = new Map(bookmakers.map((b) => [b.id, b.name]))
   const header = [
     'bet_id', 'placed_at', 'bookmaker', 'bet_type', 'stake', 'total_odds',
-    'free_bet', 'status', 'payout', 'profit', 'settled_at', 'notes',
+    'free_bet', 'super_boost', 'status', 'payout', 'profit', 'settled_at', 'notes',
     'leg_match', 'leg_market', 'leg_player', 'leg_team', 'leg_line', 'leg_result',
   ]
   const rows = [header.join(',')]
   for (const bet of bets) {
     const base = [
       bet.id, bet.placed_at, bookmakerName.get(bet.bookmaker_id) ?? '', bet.bet_type,
-      bet.stake, bet.total_odds, bet.is_free_bet, bet.status, bet.payout,
+      bet.stake, bet.total_odds, bet.is_free_bet, bet.is_super_boost, bet.status, bet.payout,
       betProfit(bet), bet.settled_at, bet.notes,
     ]
     for (const leg of bet.legs) {

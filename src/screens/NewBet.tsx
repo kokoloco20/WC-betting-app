@@ -5,7 +5,7 @@ import { SQUADS } from '../data/players'
 import { TEAMS, teamByCode } from '../data/teams'
 import { useData } from '../lib/data'
 import type { BetType, Market } from '../lib/types'
-import { BET_TYPE_LABELS, MARKET_LABELS, MARKET_OPTIONS } from '../lib/types'
+import { BET_TYPE_LABELS, BET_TYPE_OPTIONS, MARKET_LABELS, MARKET_OPTIONS } from '../lib/types'
 
 function findSquadPlayer(name: string) {
   const n = name.trim().toLowerCase()
@@ -41,6 +41,7 @@ export function NewBet() {
   const [stake, setStake] = useState('')
   const [odds, setOdds] = useState('')
   const [freeBet, setFreeBet] = useState(false)
+  const [superBoost, setSuperBoost] = useState(false)
   const [notes, setNotes] = useState('')
   const [builderMatch, setBuilderMatch] = useState<number | null>(null)
   const [legs, setLegs] = useState<LegDraft[]>([emptyLeg()])
@@ -124,6 +125,7 @@ export function NewBet() {
         stake: stakeN,
         total_odds: oddsN,
         is_free_bet: freeBet,
+        is_super_boost: superBoost,
         notes: notes.trim() || null,
         legs: legInputs,
       })
@@ -131,6 +133,7 @@ export function NewBet() {
       setStake('')
       setOdds('')
       setFreeBet(false)
+      setSuperBoost(false)
       setNotes('')
       setBuilderMatch(null)
       setLegs([emptyLeg()])
@@ -160,7 +163,7 @@ export function NewBet() {
         <div>
           <label className="lbl">Bet type</label>
           <select className="input" value={betType} onChange={(e) => changeBetType(e.target.value as BetType)}>
-            {(Object.keys(BET_TYPE_LABELS) as BetType[]).map((t) => (
+            {BET_TYPE_OPTIONS.map((t) => (
               <option key={t} value={t}>{BET_TYPE_LABELS[t]}</option>
             ))}
           </select>
@@ -179,6 +182,11 @@ export function NewBet() {
           <input type="checkbox" checked={freeBet} onChange={(e) => setFreeBet(e.target.checked)}
             className="h-4 w-4 accent-emerald-500" />
           Free bet / promo money (your own money is not at risk)
+        </label>
+        <label className="col-span-2 flex items-center gap-2 text-sm text-neutral-300">
+          <input type="checkbox" checked={superBoost} onChange={(e) => setSuperBoost(e.target.checked)}
+            className="h-4 w-4 accent-amber-500" />
+          ⚡ Super boost (the bookie boosted the odds)
         </label>
       </div>
 

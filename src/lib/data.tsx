@@ -20,6 +20,7 @@ export interface NewBetInput {
   stake: number
   total_odds: number
   is_free_bet: boolean
+  is_super_boost: boolean
   notes: string | null
   legs: NewLegInput[]
 }
@@ -42,7 +43,9 @@ interface DataApi {
   ) => Promise<void>
   updateBet: (
     betId: string,
-    fields: Partial<Pick<Bet, 'stake' | 'total_odds' | 'bookmaker_id' | 'bet_type' | 'is_free_bet' | 'notes'>>,
+    fields: Partial<
+      Pick<Bet, 'stake' | 'total_odds' | 'bookmaker_id' | 'bet_type' | 'is_free_bet' | 'is_super_boost' | 'notes'>
+    >,
   ) => Promise<void>
   reopenBet: (bet: Bet) => Promise<void>
   deleteBet: (betId: string) => Promise<void>
@@ -189,7 +192,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const updateBet = useCallback(
     async (
       betId: string,
-      fields: Partial<Pick<Bet, 'stake' | 'total_odds' | 'bookmaker_id' | 'bet_type' | 'is_free_bet' | 'notes'>>,
+      fields: Partial<
+        Pick<Bet, 'stake' | 'total_odds' | 'bookmaker_id' | 'bet_type' | 'is_free_bet' | 'is_super_boost' | 'notes'>
+      >,
     ) => {
       const { error } = await supabase!.from('bets').update(fields).eq('id', betId)
       if (error) throw error

@@ -17,7 +17,7 @@ const legSig = (market: string, matchNumber: number | null, teamCode: string | n
   `${market}:${matchNumber ?? ''}:${teamCode ?? ''}:${(line ?? '').toLowerCase().trim()}`
 import { eur } from '../lib/format'
 import type { BetType, Market } from '../lib/types'
-import { BET_TYPE_LABELS, MARKET_LABELS } from '../lib/types'
+import { BET_TYPE_LABELS, BET_TYPE_OPTIONS, MARKET_LABELS } from '../lib/types'
 
 export function ImportBets() {
   const { bookmakers } = useData()
@@ -241,6 +241,7 @@ function Review({
           stake: bet.stake,
           total_odds: Math.max(bet.totalOdds, 1),
           is_free_bet: bet.isFreeBet,
+          is_super_boost: bet.isSuperBoost,
           notes: `Imported · ${bet.betTypeRaw}`,
           legs,
         })
@@ -360,16 +361,23 @@ function BetReviewCard({
               <label className="lbl">Bet type</label>
               <select className="input" value={bet.betType}
                 onChange={(e) => onChange({ betType: e.target.value as BetType })}>
-                {(Object.keys(BET_TYPE_LABELS) as BetType[]).map((t) => (
+                {BET_TYPE_OPTIONS.map((t) => (
                   <option key={t} value={t}>{BET_TYPE_LABELS[t]}</option>
                 ))}
               </select>
             </div>
-            <label className="flex items-end gap-2 pb-2 text-sm text-neutral-300">
-              <input type="checkbox" checked={bet.isFreeBet} className="h-4 w-4 accent-emerald-500"
-                onChange={(e) => onChange({ isFreeBet: e.target.checked })} />
-              Free bet
-            </label>
+            <div className="flex flex-col justify-end gap-1 pb-2 text-sm text-neutral-300">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={bet.isFreeBet} className="h-4 w-4 accent-emerald-500"
+                  onChange={(e) => onChange({ isFreeBet: e.target.checked })} />
+                Free bet
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={bet.isSuperBoost} className="h-4 w-4 accent-amber-500"
+                  onChange={(e) => onChange({ isSuperBoost: e.target.checked })} />
+                ⚡ Super boost
+              </label>
+            </div>
           </div>
 
           {bet.legs.map((leg, i) => (

@@ -23,6 +23,7 @@ create table bets (
   stake numeric not null check (stake >= 0),
   total_odds numeric not null check (total_odds >= 1),
   is_free_bet boolean not null default false,
+  is_super_boost boolean not null default false,
   status text not null default 'pending' check (status in ('pending', 'won', 'lost', 'void', 'cashed_out')),
   payout numeric,
   placed_at timestamptz not null default now(),

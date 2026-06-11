@@ -18,7 +18,7 @@ function matchesDrill(bet: Bet, drill: Drill, players: Parameters<typeof legTeam
     case 'bookmaker':
       return bet.bookmaker_id === drill.key
     case 'betType':
-      return bet.bet_type === drill.key
+      return drill.key === 'boosted' ? bet.is_super_boost : bet.bet_type === drill.key
     case 'legs':
       return String(bet.legs.length).padStart(2, '0') === drill.key
     case 'team':

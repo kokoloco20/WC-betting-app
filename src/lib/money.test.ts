@@ -26,6 +26,7 @@ function bet(extra: Partial<Bet> = {}): Bet {
     stake: 10,
     total_odds: 2,
     is_free_bet: false,
+    is_super_boost: false,
     status: 'pending',
     payout: null,
     placed_at: '2026-06-12T12:00:00Z',

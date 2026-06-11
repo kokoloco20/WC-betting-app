@@ -36,9 +36,12 @@ export const BET_TYPE_LABELS: Record<BetType, string> = {
   straight: 'Straight',
   parlay: 'Parlay',
   bet_builder: 'Bet builder',
-  super_boost: 'Super boost',
+  super_boost: 'Super boost', // legacy value; new bets use the is_super_boost flag
   outright: 'Outright',
 }
+
+/** Bet types offered in forms — super boost is a toggle, not a type. */
+export const BET_TYPE_OPTIONS: BetType[] = ['straight', 'parlay', 'bet_builder', 'outright']
 
 export const MARKET_LABELS: Record<Market, string> = {
   shots_on_target: 'Shots on target',
@@ -86,6 +89,7 @@ export interface Bet {
   stake: number
   total_odds: number
   is_free_bet: boolean
+  is_super_boost: boolean
   status: BetStatus
   payout: number | null
   placed_at: string

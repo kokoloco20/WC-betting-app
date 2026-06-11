@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import {
   findMatchNumber,
   findSquadPlayerName,
+  isSuperBoostText,
   resolveBetType,
   resolveMarket,
   resolveTeamCode,
@@ -150,6 +151,7 @@ export async function parseScreenshots(apiKey: string, files: File[]): Promise<P
       betTypeRaw: b.betTypeRaw,
       totalOdds: b.totalOdds,
       isFreeBet: b.isFreeBet,
+      isSuperBoost: isSuperBoostText(b.betTypeRaw),
       potentialPayout: b.potentialPayout,
       legs,
     }

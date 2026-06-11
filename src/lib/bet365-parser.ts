@@ -26,6 +26,7 @@ export interface ParsedBet {
   betTypeRaw: string
   totalOdds: number
   isFreeBet: boolean
+  isSuperBoost: boolean
   potentialPayout: number | null
   legs: ParsedLeg[]
 }
@@ -102,10 +103,12 @@ export function resolveBetType(raw: string, legCount: number): BetType {
   if (/enkelvoudig|single/.test(t)) return 'straight'
   if (/\d+-voud|\d+[- ]fold|double|treble|accumulator|acca|parlay/.test(t)) return 'parlay'
   if (/bet builder/.test(t)) return 'bet_builder'
-  if (/super boost/.test(t)) return 'super_boost'
   if (/winnaar|outright/.test(t)) return 'outright'
+  // "Super Boost" is a flag, not a structure — fall through to leg count
   return legCount > 1 ? 'parlay' : 'straight'
 }
+
+export const isSuperBoostText = (raw: string) => /super boost|superboost/i.test(raw)
 
 export function findSquadPlayerName(name: string | null | undefined): string | null {
   if (!name) return null
@@ -183,6 +186,7 @@ export function parseBet365Html(html: string): ParsedBet[] {
       betTypeRaw,
       totalOdds: Math.round(product * 100) / 100,
       isFreeBet,
+      isSuperBoost: isSuperBoostText(betTypeRaw),
       potentialPayout,
       legs,
     })

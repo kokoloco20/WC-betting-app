@@ -103,6 +103,8 @@ export function profitByBetType(bets: Bet[]): LeaderRow[] {
     const profit = betProfit(bet)
     if (profit === null) continue
     accumulate(acc, bet.bet_type, BET_TYPE_LABELS[bet.bet_type], profit, bet.id)
+    // boosts are a flag on top of the structural type — show them as their own row
+    if (bet.is_super_boost) accumulate(acc, 'boosted', '⚡ Super boost', profit, bet.id)
   }
   return toRows(acc)
 }
