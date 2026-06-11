@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Secrets and local brainstorm artifacts
+.env
+.superpowers/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
