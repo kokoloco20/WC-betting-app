@@ -33,7 +33,8 @@ function Shell() {
   const { loadError, refresh } = useData()
 
   return (
-    <div className="mx-auto max-w-xl px-4 pt-5 pb-28">
+    <div className="mx-auto max-w-xl px-4 pt-5 pb-28 lg:max-w-5xl">
+      <div className="fixed inset-x-0 top-0 z-10 h-1 bg-gradient-to-r from-violet-600 via-rose-500 to-lime-400" />
       <header className="mb-5 flex items-center justify-between">
         <h1 className="flex items-baseline gap-2 text-lg font-extrabold tracking-tight">
           <span>⚽</span>
@@ -66,7 +67,11 @@ function Shell() {
         />
       )}
       {tab === 'open' && <OpenBets />}
-      {tab === 'new' && <NewBet />}
+      {tab === 'new' && (
+        <div className="mx-auto lg:max-w-xl">
+          <NewBet />
+        </div>
+      )}
       {tab === 'history' && <History drill={drill} onDrillChange={setDrill} />}
 
       <nav className="fixed inset-x-0 bottom-3 px-4">

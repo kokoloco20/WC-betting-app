@@ -103,11 +103,13 @@ export function History({ drill, onDrillChange }: { drill: Drill | null; onDrill
       )}
 
       {filtered.length === 0 && <p className="text-neutral-400">No bets match.</p>}
-      {filtered.map((bet) => (
-        <BetCard key={bet.id} bet={bet}>
-          <SettledActions bet={bet} />
-        </BetCard>
-      ))}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {filtered.map((bet) => (
+          <BetCard key={bet.id} bet={bet}>
+            <SettledActions bet={bet} />
+          </BetCard>
+        ))}
+      </div>
 
       <KnockoutEditor />
       <BookmakerManager />

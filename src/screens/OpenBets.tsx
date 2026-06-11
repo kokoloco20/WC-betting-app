@@ -32,21 +32,28 @@ export function OpenBets() {
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
         <h2 className="text-lg font-semibold">Open bets</h2>
-        <p className="text-sm text-neutral-400">
-          {eur(atRisk)} at risk · {eur(potential)} potential
+        <p className="num text-sm text-neutral-400">
+          {eur(atRisk)} at risk · <span className="text-emerald-400">{eur(potential)}</span> potential
         </p>
       </div>
       {open.length === 0 && <p className="text-neutral-400">No open bets. 🎉</p>}
-      {open.map((bet) => (
-        <BetCard key={bet.id} bet={bet}>
-          <SettlePanel bet={bet} />
-        </BetCard>
-      ))}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {open.map((bet) => (
+          <BetCard key={bet.id} bet={bet}>
+            <SettlePanel bet={bet} />
+          </BetCard>
+        ))}
+      </div>
     </div>
   )
 }
 
-const CYCLE: LegResult[] = ['pending', 'won', 'lost', 'void']
+const RESULT_OPTIONS: { value: LegResult; label: string; active: string }[] = [
+  { value: 'pending', label: '·', active: 'bg-white/10 text-neutral-200' },
+  { value: 'won', label: '✓ won', active: 'bg-emerald-500/25 text-emerald-300' },
+  { value: 'lost', label: '✗ lost', active: 'bg-rose-500/25 text-rose-300' },
+  { value: 'void', label: '– void', active: 'bg-sky-500/20 text-sky-300' },
+]
 
 function SettlePanel({ bet }: { bet: Bet }) {
   const { players, knockout, settleBet, deleteBet } = useData()
@@ -55,19 +62,17 @@ function SettlePanel({ bet }: { bet: Bet }) {
     () => Object.fromEntries(bet.legs.map((l) => [l.id, l.result])),
   )
   const [cashout, setCashout] = useState(false)
+  const [adjust, setAdjust] = useState(false)
   const [payout, setPayout] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const derived = deriveStatus(bet.legs.map((l) => ({ result: results[l.id] })))
   const defaultPayout =
-    derived === 'won'
-      ? potentialPayout(bet)
-      : derived === 'void'
-        ? riskedStake(bet)
-        : 0
+    derived === 'won' ? potentialPayout(bet) : derived === 'void' ? riskedStake(bet) : 0
+  const manualEntry = cashout || adjust
+  const payoutValue = manualEntry && payout !== '' ? Number(payout) : defaultPayout
   const effectiveStatus = cashout ? 'cashed_out' : derived
-  const payoutValue = payout === '' ? defaultPayout : Number(payout)
 
   if (!openPanel) {
     return (
@@ -81,7 +86,7 @@ function SettlePanel({ bet }: { bet: Bet }) {
     setError(null)
     if (cashout && payout === '') return setError('Enter the cash-out amount you received.')
     if (!cashout && derived === 'pending')
-      return setError('Mark every leg, or tick cash-out with an amount.')
+      return setError('Set every leg to won/lost/void, or tick cash-out.')
     if (Number.isNaN(payoutValue) || payoutValue < 0) return setError('Payout must be € 0 or more.')
     setBusy(true)
     try {
@@ -93,59 +98,74 @@ function SettlePanel({ bet }: { bet: Bet }) {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-neutral-800 bg-neutral-950 p-3">
-      <p className="lbl mb-0">Tap each leg to cycle: pending → won → lost → void</p>
+    <div className="space-y-3 rounded-xl border border-white/10 bg-black/30 p-3">
       {bet.legs.map((leg) => {
         const d = legDescription(leg, players, knockout)
-        const r = results[leg.id]
-        const color =
-          r === 'won' ? 'border-emerald-600 text-emerald-400'
-          : r === 'lost' ? 'border-red-600 text-red-400'
-          : 'border-neutral-700 text-neutral-400'
+        const current = results[leg.id]
         return (
-          <button
-            key={leg.id}
-            className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm ${color}`}
-            onClick={() =>
-              setResults((cur) => ({
-                ...cur,
-                [leg.id]: CYCLE[(CYCLE.indexOf(cur[leg.id]) + 1) % CYCLE.length],
-              }))
-            }
-          >
-            <span className="text-neutral-200">{d.main}</span>
-            <span className="font-semibold uppercase">{r}</span>
-          </button>
+          <div key={leg.id} className="space-y-1.5">
+            <p className="text-sm text-neutral-200">{d.main}</p>
+            <div className="flex gap-1">
+              {RESULT_OPTIONS.map((o) => (
+                <button
+                  key={o.value}
+                  onClick={() => setResults((cur) => ({ ...cur, [leg.id]: o.value }))}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
+                    current === o.value ? o.active : 'text-neutral-600 hover:bg-white/5 hover:text-neutral-400'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
         )
       })}
 
-      <label className="flex items-center gap-2 text-sm text-neutral-300">
+      <label className="flex items-center gap-2 border-t border-white/10 pt-3 text-sm text-neutral-300">
         <input type="checkbox" checked={cashout} onChange={(e) => setCashout(e.target.checked)}
           className="h-4 w-4 accent-emerald-500" />
-        Cashed out (enter the amount you received)
+        Cashed out early
       </label>
 
-      <div className="flex items-center gap-3">
-        <div className="grow">
-          <label className="lbl">Payout (€)</label>
+      {cashout ? (
+        <div>
+          <label className="lbl">Amount received (€)</label>
           <input className="input" type="number" min="0" step="0.01" inputMode="decimal"
-            value={payout} placeholder={String(defaultPayout)}
-            onChange={(e) => setPayout(e.target.value)} />
+            value={payout} placeholder="0.00" onChange={(e) => setPayout(e.target.value)} autoFocus />
         </div>
-        <div className="pt-4 text-sm text-neutral-400">
-          → {effectiveStatus.replace('_', ' ')}
+      ) : derived === 'pending' ? (
+        <p className="text-xs text-neutral-500">Set each leg above — the payout is calculated for you.</p>
+      ) : (
+        <div className="flex items-center justify-between text-sm">
+          <p className="num">
+            <span className="text-neutral-400 capitalize">{derived}</span>
+            <span className="mx-1.5 text-neutral-600">→</span>
+            <span className={derived === 'won' ? 'font-semibold text-emerald-400' : 'text-neutral-300'}>
+              returns {eur(payoutValue)}
+            </span>
+          </p>
+          <button className="text-xs text-neutral-500 underline hover:text-neutral-300"
+            onClick={() => setAdjust((a) => !a)}>
+            {adjust ? 'auto' : 'adjust'}
+          </button>
         </div>
-      </div>
+      )}
+      {adjust && !cashout && (
+        <input className="input" type="number" min="0" step="0.01" inputMode="decimal"
+          value={payout} placeholder={String(defaultPayout)}
+          onChange={(e) => setPayout(e.target.value)} autoFocus />
+      )}
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-rose-400">{error}</p>}
 
       <div className="flex gap-2">
-        <button className="btn grow" onClick={save} disabled={busy}>
-          {busy ? 'Saving…' : 'Save result'}
+        <button className="btn grow !py-2" onClick={save} disabled={busy}>
+          {busy ? 'Saving…' : `Save · ${effectiveStatus.replace('_', ' ')}`}
         </button>
         <button className="btn-ghost" onClick={() => setOpenPanel(false)}>Cancel</button>
         <button
-          className="btn-ghost border-red-900 text-red-400"
+          className="btn-ghost !border-rose-900/60 !text-rose-400"
           onClick={async () => {
             if (window.confirm('Delete this bet entirely?')) await deleteBet(bet.id)
           }}

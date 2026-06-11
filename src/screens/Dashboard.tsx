@@ -52,11 +52,16 @@ export function Dashboard({ onDrill }: { onDrill: (d: Drill) => void }) {
 
   if (loading) return <p className="text-neutral-400">Loading…</p>
 
+  const heroGlow =
+    t.profit > 0 ? 'bg-emerald-500/15' : t.profit < 0 ? 'bg-rose-500/15' : 'bg-sky-500/15'
+  const heroBorder =
+    t.profit > 0 ? '!border-emerald-500/20' : t.profit < 0 ? '!border-rose-500/20' : '!border-sky-500/20'
+
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 lg:grid-cols-2">
       {/* Hero */}
-      <div className="card relative overflow-hidden !p-5">
-        <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-emerald-500/10 blur-2xl" />
+      <div className={`card relative overflow-hidden !p-5 ${heroBorder}`}>
+        <div className={`pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full blur-2xl ${heroGlow}`} />
         <p className="lbl">Tournament profit</p>
         <p className={`num text-4xl font-extrabold tracking-tight ${profitColor(t.profit)}`}>
           {signedEur(t.profit)}
@@ -102,7 +107,7 @@ export function Dashboard({ onDrill }: { onDrill: (d: Drill) => void }) {
 
       {/* Heroes & villains */}
       {(teamRows.length > 0 || playerRows.length > 0) && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:col-span-2 lg:grid-cols-4">
           <Podium icon="🏆" label="Best team" row={teamRows[0]} onPick={(k) => onDrill({ kind: 'team', key: k })} />
           <Podium icon="💸" label="Worst team" row={worst(teamRows)} onPick={(k) => onDrill({ kind: 'team', key: k })} />
           <Podium icon="⭐" label="Best player" row={playerRows[0]} onPick={(k) => onDrill({ kind: 'player', key: k })} />
@@ -124,7 +129,7 @@ export function Dashboard({ onDrill }: { onDrill: (d: Drill) => void }) {
       )}
 
       {bets.length === 0 && (
-        <div className="card text-center">
+        <div className="card text-center lg:col-span-2">
           <p className="text-3xl">🎯</p>
           <p className="mt-1 font-medium">No bets yet</p>
           <p className="text-sm text-neutral-400">Hit “New” below and log your first one.</p>
@@ -215,7 +220,7 @@ function TodayStrip() {
   )
   if (matches.length === 0) return null
   return (
-    <div className="card !p-3">
+    <div className="card !p-3 lg:col-span-2">
       <p className="lbl ml-1">Today's matches</p>
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {matches.map((m) => (

@@ -10,7 +10,7 @@ export const signedEur = (n: number) => (n > 0 ? '+' : '') + EUR.format(n)
 export const pct = (n: number) => `${(n * 100).toFixed(1)}%`
 
 export function profitColor(n: number): string {
-  return n > 0 ? 'text-emerald-400' : n < 0 ? 'text-red-400' : 'text-neutral-300'
+  return n > 0 ? 'text-emerald-400' : n < 0 ? 'text-rose-400' : 'text-sky-300'
 }
 
 export function kickoffLocal(iso: string): string {
