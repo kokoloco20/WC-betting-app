@@ -5,18 +5,20 @@ import type { Drill } from './lib/filters'
 import { supabase } from './lib/supabase'
 import { Dashboard } from './screens/Dashboard'
 import { History } from './screens/History'
+import { ImportBets } from './screens/ImportBets'
 import { NewBet } from './screens/NewBet'
 import { OpenBets } from './screens/OpenBets'
 
 // apply saved theme before first paint (login screen included)
 document.documentElement.dataset.theme = localStorage.getItem('theme') ?? 'dark'
 
-type Tab = 'dashboard' | 'open' | 'new' | 'history'
+type Tab = 'dashboard' | 'open' | 'new' | 'import' | 'history'
 
 const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'dashboard', icon: '📊', label: 'Stats' },
   { id: 'open', icon: '⏳', label: 'Open' },
   { id: 'new', icon: '➕', label: 'New' },
+  { id: 'import', icon: '📋', label: 'Import' },
   { id: 'history', icon: '📜', label: 'History' },
 ]
 
@@ -105,6 +107,11 @@ function Shell() {
       {tab === 'new' && (
         <div className="mx-auto lg:max-w-xl">
           <NewBet />
+        </div>
+      )}
+      {tab === 'import' && (
+        <div className="mx-auto lg:max-w-xl">
+          <ImportBets />
         </div>
       )}
       {tab === 'history' && <History drill={drill} onDrillChange={setDrill} />}
