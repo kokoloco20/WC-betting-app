@@ -1,20 +1,29 @@
 import { useState } from 'react'
 import { MatchSelect } from '../components/MatchSelect'
 import { parseBet365Html, type ParsedBet } from '../lib/bet365-parser'
+import { parseScreenshots } from '../lib/screenshot-parser'
+import { SQUADS } from '../data/players'
 import { useData } from '../lib/data'
+
+const findSquadPlayer = (name: string) =>
+  SQUADS.find((p) => p.name.toLowerCase() === name.trim().toLowerCase())
 import { eur } from '../lib/format'
 import type { BetType, Market } from '../lib/types'
 import { BET_TYPE_LABELS, MARKET_LABELS } from '../lib/types'
 
 export function ImportBets() {
   const { bookmakers } = useData()
-  const [step, setStep] = useState<'paste' | 'review'>('paste')
+  const [step, setStep] = useState<'input' | 'review'>('input')
+  const [mode, setMode] = useState<'photo' | 'html'>('photo')
   const [html, setHtml] = useState('')
+  const [files, setFiles] = useState<File[]>([])
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('anthropicKey') ?? '')
   const [bookmakerId, setBookmakerId] = useState(() => localStorage.getItem('lastBookmaker') ?? '')
   const [bets, setBets] = useState<ParsedBet[]>([])
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const parse = () => {
+  const parseHtml = () => {
     setError(null)
     if (!bookmakerId) return setError('Pick the bookmaker these bets belong to.')
     try {
@@ -28,26 +37,47 @@ export function ImportBets() {
     }
   }
 
+  const parsePhotos = async () => {
+    setError(null)
+    if (!bookmakerId) return setError('Pick the bookmaker these bets belong to.')
+    if (!apiKey.trim()) return setError('Paste your Anthropic API key first (stored only on this device).')
+    if (files.length === 0) return setError('Pick at least one screenshot.')
+    setBusy(true)
+    try {
+      localStorage.setItem('anthropicKey', apiKey.trim())
+      const parsed = await parseScreenshots(apiKey.trim(), files)
+      if (parsed.length === 0) {
+        setError('No bets could be read from the screenshot(s). Try a clearer, full-slip screenshot.')
+      } else {
+        setBets(parsed)
+        setStep('review')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (step === 'review') {
-    return <Review bets={bets} setBets={setBets} bookmakerId={bookmakerId} onBack={() => setStep('paste')} />
+    return <Review bets={bets} setBets={setBets} bookmakerId={bookmakerId} onBack={() => setStep('input')} />
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Import from Bet365</h2>
-      <div className="card space-y-2 text-sm text-neutral-300">
-        <p className="lbl mb-0">How to copy your bets</p>
-        <ol className="list-decimal space-y-1 pl-4">
-          <li>Open Bet365 → <span className="text-neutral-100">My Bets</span> in a desktop browser</li>
-          <li>Right-click a bet → <span className="text-neutral-100">Inspect</span></li>
-          <li>
-            In the elements panel, find the container
-            <code className="mx-1 rounded bg-black/30 px-1">.myb-BetItemsContainer_Container</code>
-          </li>
-          <li>Right-click it → Copy → <span className="text-neutral-100">Copy outerHTML</span></li>
-          <li>Paste it below</li>
-        </ol>
+      <h2 className="text-lg font-semibold">Import bets</h2>
+
+      <div className="flex gap-1 rounded-xl border border-white/10 bg-black/30 p-1 text-sm font-medium">
+        {([['photo', '📸 Screenshot'], ['html', '🧾 Bet365 HTML']] as const).map(([m, label]) => (
+          <button key={m} onClick={() => setMode(m)}
+            className={`grow rounded-lg py-1.5 transition-colors ${
+              mode === m ? 'bg-emerald-500/20 text-emerald-300' : 'text-neutral-500 hover:text-neutral-300'
+            }`}>
+            {label}
+          </button>
+        ))}
       </div>
+
       <div>
         <label className="lbl">Bookmaker</label>
         <select className="input" value={bookmakerId} onChange={(e) => setBookmakerId(e.target.value)}>
@@ -57,19 +87,69 @@ export function ImportBets() {
           ))}
         </select>
       </div>
-      <div>
-        <label className="lbl">Bet365 HTML</label>
-        <textarea
-          className="input h-48 font-mono text-xs"
-          placeholder="<div class=&quot;myb-BetItemsContainer_Container&quot;>…"
-          value={html}
-          onChange={(e) => setHtml(e.target.value)}
-        />
-      </div>
-      {error && <p className="text-sm text-rose-400">{error}</p>}
-      <button className="btn w-full" onClick={parse} disabled={!html.trim()}>
-        Parse bets
-      </button>
+
+      {mode === 'photo' ? (
+        <>
+          <div className="card space-y-2 text-sm text-neutral-300">
+            <p className="lbl mb-0">Scan bet slips with AI</p>
+            <p>
+              Pick screenshots of your bet slips (any bookmaker app). Claude reads them and turns
+              them into bets you can review before saving. Costs a few cents per screenshot, billed
+              to your own API key — create one at{' '}
+              <a className="text-emerald-400 underline" href="https://console.anthropic.com" target="_blank" rel="noreferrer">
+                console.anthropic.com
+              </a>{' '}
+              and add a small credit balance.
+            </p>
+          </div>
+          <div>
+            <label className="lbl">Anthropic API key (stays on this device)</label>
+            <input className="input" type="password" placeholder="sk-ant-…"
+              value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+          </div>
+          <div>
+            <label className="lbl">Screenshots</label>
+            <input className="input" type="file" accept="image/*" multiple
+              onChange={(e) => setFiles([...(e.target.files ?? [])])} />
+            {files.length > 0 && (
+              <p className="mt-1 text-xs text-neutral-500">{files.length} image{files.length === 1 ? '' : 's'} selected</p>
+            )}
+          </div>
+          {error && <p className="text-sm text-rose-400">{error}</p>}
+          <button className="btn w-full" onClick={() => void parsePhotos()} disabled={busy}>
+            {busy ? 'Reading screenshots… (can take ~30s)' : 'Read screenshots'}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="card space-y-2 text-sm text-neutral-300">
+            <p className="lbl mb-0">How to copy your bets</p>
+            <ol className="list-decimal space-y-1 pl-4">
+              <li>Open Bet365 → <span className="text-neutral-100">My Bets</span> in a desktop browser</li>
+              <li>Right-click a bet → <span className="text-neutral-100">Inspect</span></li>
+              <li>
+                In the elements panel, find the container
+                <code className="mx-1 rounded bg-black/30 px-1">.myb-BetItemsContainer_Container</code>
+              </li>
+              <li>Right-click it → Copy → <span className="text-neutral-100">Copy outerHTML</span></li>
+              <li>Paste it below</li>
+            </ol>
+          </div>
+          <div>
+            <label className="lbl">Bet365 HTML</label>
+            <textarea
+              className="input h-48 font-mono text-xs"
+              placeholder="<div class=&quot;myb-BetItemsContainer_Container&quot;>…"
+              value={html}
+              onChange={(e) => setHtml(e.target.value)}
+            />
+          </div>
+          {error && <p className="text-sm text-rose-400">{error}</p>}
+          <button className="btn w-full" onClick={parseHtml} disabled={!html.trim()}>
+            Parse bets
+          </button>
+        </>
+      )}
     </div>
   )
 }
@@ -82,13 +162,26 @@ function Review({
   bookmakerId: string
   onBack: () => void
 }) {
-  const { addBet, refresh } = useData()
+  const { addBet, addPlayer, players, refresh } = useData()
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<{ ok: number; failed: number } | null>(null)
   const [errors, setErrors] = useState<string[]>([])
 
   const update = (id: string, patch: Partial<ParsedBet>) =>
     setBets(bets.map((b) => (b.id === id ? { ...b, ...patch } : b)))
+
+  // "type once, reuse after": existing player by name, else create from squad data
+  const resolvePlayer = async (leg: ParsedBet['legs'][number]): Promise<string | null> => {
+    const name = leg.playerName?.trim()
+    if (!name) return null
+    const existing = [...players.values()].find((p) => p.name.toLowerCase() === name.toLowerCase())
+    if (existing) return existing.id
+    const team = leg.teamCode ?? leg.homeCode ?? leg.awayCode
+    const squad = findSquadPlayer(name)
+    if (squad) return (await addPlayer(squad.name, squad.team)).id
+    if (team) return (await addPlayer(name, team)).id
+    return null
+  }
 
   const importAll = async () => {
     setBusy(true)
@@ -97,20 +190,26 @@ function Review({
     const failures: string[] = []
     for (const bet of bets) {
       try {
+        const legs = []
+        for (const l of bet.legs) {
+          const playerId = await resolvePlayer(l)
+          legs.push({
+            match_number: l.matchNumber,
+            market: l.market,
+            player_id: playerId,
+            team_code: l.teamCode,
+            // keep the player's name visible if we couldn't link him
+            line: !playerId && l.playerName ? [l.playerName, l.line].filter(Boolean).join(' ') : l.line,
+          })
+        }
         await addBet({
           bookmaker_id: bookmakerId,
           bet_type: bet.betType,
           stake: bet.stake,
           total_odds: Math.max(bet.totalOdds, 1),
           is_free_bet: bet.isFreeBet,
-          notes: `Imported from Bet365 · ${bet.betTypeRaw}`,
-          legs: bet.legs.map((l) => ({
-            match_number: l.matchNumber,
-            market: l.market,
-            player_id: null,
-            team_code: l.teamCode,
-            line: l.line,
-          })),
+          notes: `Imported · ${bet.betTypeRaw}`,
+          legs,
         })
         ok++
       } catch (err) {

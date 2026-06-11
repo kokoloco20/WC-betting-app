@@ -95,6 +95,17 @@ describe('parseBet365Html', () => {
     expect(b.legs[1].matchNumber).not.toBeNull() // NED–JPN is a real group F fixture
   })
 
+  it('recognizes squad players in the selection', () => {
+    const html = bet({
+      stake: '€5,00',
+      header: 'Enkelvoudig',
+      legs: leg({ selection: 'Virgil van Dijk', odds: '3.00', market: 'Kaarten', home: 'Nederland', away: 'Japan' }),
+    })
+    const [b] = parseBet365Html(html)
+    expect(b.legs[0].playerName).toBe('Virgil van Dijk')
+    expect(b.legs[0].line).toBeNull()
+  })
+
   it('returns empty array for unrelated HTML', () => {
     expect(parseBet365Html('<div>hoi</div>')).toEqual([])
   })

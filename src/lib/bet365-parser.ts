@@ -1,4 +1,5 @@
 import { MATCHES } from '../data/matches'
+import { SQUADS } from '../data/players'
 import { TEAMS } from '../data/teams'
 import type { BetType, LegResult, Market } from './types'
 
@@ -12,6 +13,7 @@ export interface ParsedLeg {
   homeCode: string | null
   awayCode: string | null
   teamCode: string | null
+  playerName: string | null
   matchNumber: number | null
   result: LegResult
   line: string | null
@@ -92,7 +94,13 @@ export function resolveBetType(raw: string, legCount: number): BetType {
   return legCount > 1 ? 'parlay' : 'straight'
 }
 
-function findMatchNumber(home: string | null, away: string | null): number | null {
+export function findSquadPlayerName(name: string | null | undefined): string | null {
+  if (!name) return null
+  const n = name.trim().toLowerCase()
+  return SQUADS.find((p) => p.name.toLowerCase() === n)?.name ?? null
+}
+
+export function findMatchNumber(home: string | null, away: string | null): number | null {
   if (!home || !away) return null
   const match = MATCHES.find(
     (m) => (m.home === home && m.away === away) || (m.home === away && m.away === home),
@@ -133,6 +141,7 @@ export function parseBet365Html(html: string): ParsedBet[] {
       const homeCode = resolveTeamCode(homeTeam)
       const awayCode = resolveTeamCode(awayTeam)
       const selectionCode = resolveTeamCode(selection)
+      const playerName = selectionCode ? null : findSquadPlayerName(selection)
 
       legs.push({
         selection,
@@ -144,10 +153,11 @@ export function parseBet365Html(html: string): ParsedBet[] {
         homeCode,
         awayCode,
         teamCode: selectionCode,
+        playerName,
         matchNumber: findMatchNumber(homeCode, awayCode),
         result: legResult(legEl.querySelector('.myb-WinLossIndicator')),
-        // keep the bookie's wording when the pick isn't simply a team
-        line: selectionCode ? null : selection || null,
+        // keep the bookie's wording when the pick isn't simply a team or player
+        line: selectionCode || playerName ? null : selection || null,
       })
     }
 
