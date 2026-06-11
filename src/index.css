@@ -5,16 +5,12 @@
 }
 
 body {
-  @apply bg-[#0a0e0c] text-neutral-100 antialiased;
+  @apply bg-[#0c0a12] text-neutral-100 antialiased;
   font-family: var(--font-sans);
-  background-image:
-    radial-gradient(60rem 40rem at 85% -10%, rgb(16 185 129 / 0.1), transparent 60%),
-    radial-gradient(45rem 35rem at -15% 40%, rgb(16 185 129 / 0.05), transparent 60%);
-  background-attachment: fixed;
 }
 
 .card {
-  @apply rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-4 shadow-lg shadow-black/30 backdrop-blur-sm;
+  @apply rounded-2xl border border-white/[0.08] bg-[#100e18]/75 p-4 shadow-lg shadow-black/30 backdrop-blur-md;
 }
 
 .btn {
