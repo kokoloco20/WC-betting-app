@@ -30,10 +30,23 @@ export interface ParsedBet {
   legs: ParsedLeg[]
 }
 
-/** "€15,00" → 15.00 (Dutch formatting: "." thousands, "," decimals) */
+/**
+ * Parse money in Dutch ("€1.250,50") or English ("€1,250.50") formatting.
+ * The last separator is the decimal point when followed by 1–2 digits;
+ * a trailing group of 3 digits is a thousands group ("1.250" → 1250).
+ */
 export function parseEuro(text: string): number | null {
-  const cleaned = text.replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.')
-  const n = parseFloat(cleaned)
+  const cleaned = text.replace(/[^\d.,-]/g, '')
+  if (!cleaned) return null
+  const sepIndex = Math.max(cleaned.lastIndexOf(','), cleaned.lastIndexOf('.'))
+  let normalized = cleaned
+  if (sepIndex !== -1) {
+    const decimals = cleaned.slice(sepIndex + 1)
+    const intPart = cleaned.slice(0, sepIndex).replace(/[.,]/g, '')
+    normalized =
+      decimals.length >= 1 && decimals.length <= 2 ? `${intPart}.${decimals}` : intPart + decimals
+  }
+  const n = parseFloat(normalized)
   return Number.isFinite(n) ? n : null
 }
 
@@ -66,13 +79,13 @@ export function resolveTeamCode(name: string | null | undefined): string | null 
 }
 
 const DUTCH_MARKETS: [RegExp, Market][] = [
-  [/eindresultaat/i, 'match_result'],
-  [/meer\/minder doelpunten|meer\s*\/\s*minder/i, 'over_under_goals'],
-  [/beide teams scoren/i, 'btts'],
-  [/schoten op doel/i, 'shots_on_target'],
-  [/hoekschoppen/i, 'corners'],
-  [/kaarten/i, 'cards'],
-  [/doelpuntenmakers|score op elk moment/i, 'goals'],
+  [/eindresultaat|full.?time result|match result/i, 'match_result'],
+  [/meer\/minder doelpunten|meer\s*\/\s*minder|goals over\/under|over\/under/i, 'over_under_goals'],
+  [/beide teams scoren|both teams to score/i, 'btts'],
+  [/schoten op doel|shots on target/i, 'shots_on_target'],
+  [/hoekschoppen|corners/i, 'corners'],
+  [/kaarten|cards|to be carded|booking/i, 'cards'],
+  [/doelpuntenmakers|score op elk moment|goalscorers?|anytime scorer|to score/i, 'goals'],
   [/assists?/i, 'assists'],
   [/passes/i, 'passes'],
   [/tackles/i, 'tackles'],
@@ -87,7 +100,7 @@ export function resolveMarket(raw: string): Market {
 export function resolveBetType(raw: string, legCount: number): BetType {
   const t = raw.toLowerCase()
   if (/enkelvoudig|single/.test(t)) return 'straight'
-  if (/\d+-voud|\d+-fold/.test(t)) return 'parlay'
+  if (/\d+-voud|\d+[- ]fold|double|treble|accumulator|acca|parlay/.test(t)) return 'parlay'
   if (/bet builder/.test(t)) return 'bet_builder'
   if (/super boost/.test(t)) return 'super_boost'
   if (/winnaar|outright/.test(t)) return 'outright'

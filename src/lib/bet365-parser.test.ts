@@ -32,7 +32,17 @@ describe('parseEuro', () => {
   it('parses Dutch euro formats', () => {
     expect(parseEuro('€15,00')).toBe(15)
     expect(parseEuro('€1.250,50')).toBe(1250.5)
+    expect(parseEuro('€15,5')).toBe(15.5)
     expect(parseEuro('')).toBeNull()
+  })
+  it('parses English euro formats', () => {
+    expect(parseEuro('€15.00')).toBe(15)
+    expect(parseEuro('€1,250.50')).toBe(1250.5)
+    expect(parseEuro('€80.29')).toBe(80.29)
+  })
+  it('treats a trailing 3-digit group as thousands', () => {
+    expect(parseEuro('€1.250')).toBe(1250)
+    expect(parseEuro('€1,250')).toBe(1250)
   })
 })
 
@@ -44,10 +54,14 @@ describe('resolvers', () => {
     expect(resolveTeamCode('Kameroen')).toBeNull() // not at this World Cup
     expect(resolveTeamCode('FC Knudde')).toBeNull()
   })
-  it('maps Dutch markets', () => {
+  it('maps Dutch and English markets', () => {
     expect(resolveMarket('Eindresultaat')).toBe('match_result')
+    expect(resolveMarket('Full Time Result')).toBe('match_result')
     expect(resolveMarket('Meer/minder doelpunten')).toBe('over_under_goals')
+    expect(resolveMarket('Goals Over/Under')).toBe('over_under_goals')
     expect(resolveMarket('Score op elk moment')).toBe('goals')
+    expect(resolveMarket('Anytime Scorer')).toBe('goals')
+    expect(resolveMarket('Both Teams to Score')).toBe('btts')
     expect(resolveMarket('Iets exotisch')).toBe('other')
   })
   it('maps Dutch bet types', () => {
