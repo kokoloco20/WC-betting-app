@@ -34,23 +34,28 @@ function Shell() {
 
   return (
     <div className="mx-auto max-w-xl px-4 pt-5 pb-28 lg:max-w-5xl">
-      {/* WC26-style color blocks behind everything */}
+      {/* WC26 key-art color blocks: hard-edged, vivid, like the official branding */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-40 -left-48 h-[30rem] w-[30rem] rotate-12 rounded-[6rem] bg-violet-700/35 blur-2xl" />
-        <div className="absolute top-1/4 -right-40 h-[32rem] w-[26rem] -rotate-12 rounded-[7rem] bg-rose-600/30 blur-2xl" />
-        <div className="absolute -bottom-48 left-1/4 h-[28rem] w-[28rem] rotate-6 rounded-[6rem] bg-lime-500/20 blur-2xl" />
-        <div className="absolute top-2/3 -left-32 h-96 w-96 rounded-[5rem] bg-emerald-600/25 blur-2xl" />
-        <span className="absolute -top-10 right-0 leading-none font-extrabold tracking-tighter text-white/[0.05] select-none"
-          style={{ fontSize: '16rem' }}>
+        <div className="absolute -top-24 -left-32 h-[34rem] w-[26rem] rotate-12 rounded-[5rem] bg-violet-700/60" />
+        <div className="absolute -top-16 left-1/3 h-[30rem] w-[22rem] -rotate-12 rounded-[5rem] bg-rose-600/55" />
+        <div className="absolute -right-28 -bottom-24 h-[30rem] w-[24rem] rotate-6 rounded-[5rem] bg-lime-500/45" />
+        <div className="absolute -bottom-32 -left-24 h-[26rem] w-[22rem] -rotate-6 rounded-[5rem] bg-emerald-600/50" />
+        <div className="absolute top-1/3 -right-20 h-[22rem] w-[18rem] rotate-12 rounded-[4rem] bg-red-700/40" />
+        {/* dark wash so content keeps contrast */}
+        <div className="absolute inset-0 bg-[#0c0a12]/55" />
+        <span className="absolute -top-12 right-0 leading-none font-extrabold tracking-tighter text-white/[0.07] select-none"
+          style={{ fontSize: '17rem' }}>
           26
         </span>
       </div>
       <header className="mb-5 flex items-center justify-between">
-        <h1 className="flex items-baseline gap-2 text-lg font-extrabold tracking-tight">
-          <span>⚽</span>
+        <h1 className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight">
+          <span className="rounded-lg bg-white px-1.5 py-0.5 text-base leading-none font-extrabold tracking-tighter text-[#0c0a12]">
+            26
+          </span>
           <span>
-            WC<span className="text-emerald-400">26</span>
-            <span className="ml-2 text-xs font-medium tracking-widest text-neutral-500 uppercase">
+            World Cup
+            <span className="ml-2 text-xs font-medium tracking-widest text-neutral-400 uppercase">
               bet tracker
             </span>
           </span>
