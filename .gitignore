@@ -16,6 +16,9 @@ dist-ssr
 .env
 .superpowers/
 
+# Bookmaker HTML samples for parser development (contain personal bets)
+samples/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
