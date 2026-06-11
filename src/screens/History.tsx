@@ -4,8 +4,10 @@ import { MATCHES } from '../data/matches'
 import { TEAMS } from '../data/teams'
 import { betsToCsv, downloadCsv } from '../lib/csv'
 import { useData } from '../lib/data'
+import { betSearchText } from '../lib/describe'
 import type { Drill } from '../lib/filters'
 import { kickoffLocal, STAGE_LABELS, matchLabel } from '../lib/format'
+import { betProfit } from '../lib/money'
 import { legTeamCode } from '../lib/stats'
 import type { Bet, BetType, Market } from '../lib/types'
 import { BET_TYPE_LABELS, MARKET_LABELS } from '../lib/types'
@@ -27,15 +29,35 @@ function matchesDrill(bet: Bet, drill: Drill, players: Parameters<typeof legTeam
   }
 }
 
+type SortKey = 'newest' | 'oldest' | 'stake' | 'profit' | 'loss'
+
+const SORTS: Record<SortKey, { label: string; cmp: (a: Bet, b: Bet) => number }> = {
+  newest: { label: 'Newest first', cmp: (a, b) => b.placed_at.localeCompare(a.placed_at) },
+  oldest: { label: 'Oldest first', cmp: (a, b) => a.placed_at.localeCompare(b.placed_at) },
+  stake: { label: 'Highest stake', cmp: (a, b) => b.stake - a.stake },
+  profit: { label: 'Biggest win', cmp: (a, b) => (betProfit(b) ?? 0) - (betProfit(a) ?? 0) },
+  loss: { label: 'Biggest loss', cmp: (a, b) => (betProfit(a) ?? 0) - (betProfit(b) ?? 0) },
+}
+
 export function History({ drill, onDrillChange }: { drill: Drill | null; onDrillChange: (d: Drill | null) => void }) {
   const { bets, players, bookmakers, knockout, loading } = useData()
   const [showOpen, setShowOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState<SortKey>('newest')
+  const [status, setStatus] = useState('')
 
   const filtered = useMemo(() => {
+    const bookmakerName = new Map(bookmakers.map((b) => [b.id, b.name]))
+    const q = query.trim().toLowerCase()
     let list = showOpen ? bets : bets.filter((b) => b.status !== 'pending')
+    if (status) list = list.filter((b) => b.status === status)
     if (drill) list = list.filter((b) => matchesDrill(b, drill, players))
-    return list
-  }, [bets, drill, players, showOpen])
+    if (q)
+      list = list.filter((b) =>
+        betSearchText(b, players, knockout, bookmakerName.get(b.bookmaker_id) ?? '').includes(q),
+      )
+    return [...list].sort(SORTS[sort].cmp)
+  }, [bets, drill, players, knockout, bookmakers, showOpen, query, sort, status])
 
   if (loading) return <p className="text-neutral-400">Loading…</p>
 
@@ -62,7 +84,20 @@ export function History({ drill, onDrillChange }: { drill: Drill | null; onDrill
         </button>
       </div>
 
+      <input className="input" placeholder="🔍 Search team, player, market…"
+        value={query} onChange={(e) => setQuery(e.target.value)} />
+
       <div className="flex flex-wrap items-center gap-2">
+        <select className="input w-auto" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+          {(Object.keys(SORTS) as SortKey[]).map((k) => (
+            <option key={k} value={k}>↕ {SORTS[k].label}</option>
+          ))}
+        </select>
+        <FilterSelect
+          label="Result" value={status}
+          options={[['won', 'Won'], ['lost', 'Lost'], ['cashed_out', 'Cashed out'], ['void', 'Void']]}
+          onChange={setStatus}
+        />
         <FilterSelect
           label="Bookmaker" value={drill?.kind === 'bookmaker' ? drill.key : ''}
           options={bookmakers.map((b) => [b.id, b.name])}

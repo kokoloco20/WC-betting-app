@@ -1,7 +1,7 @@
 import { matchByNumber } from '../data/matches'
 import { matchLabel, teamName } from './format'
-import type { KnockoutTeams, Leg, Player } from './types'
-import { MARKET_LABELS } from './types'
+import type { Bet, KnockoutTeams, Leg, Player } from './types'
+import { BET_TYPE_LABELS, MARKET_LABELS } from './types'
 
 /** Human line for a leg: "Mbappé 2+ Shots on target · France – Senegal". */
 export function legDescription(
@@ -19,4 +19,19 @@ export function legDescription(
     main: parts.join(' '),
     context: match ? matchLabel(match, knockout) : null,
   }
+}
+
+/** Lower-cased haystack for free-text bet search. */
+export function betSearchText(
+  bet: Bet,
+  players: Map<string, Player>,
+  knockout: Map<number, KnockoutTeams>,
+  bookmakerName: string,
+): string {
+  const parts = [bookmakerName, BET_TYPE_LABELS[bet.bet_type], bet.notes ?? '']
+  for (const leg of bet.legs) {
+    const d = legDescription(leg, players, knockout)
+    parts.push(d.main, d.context ?? '')
+  }
+  return parts.join(' ').toLowerCase()
 }

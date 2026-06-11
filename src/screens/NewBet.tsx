@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { MatchSelect } from '../components/MatchSelect'
+import { matchByNumber } from '../data/matches'
 import { SQUADS } from '../data/players'
 import { TEAMS, teamByCode } from '../data/teams'
 import { useData } from '../lib/data'
@@ -32,7 +33,7 @@ const emptyLeg = (): LegDraft => ({
 const MULTI_LEG_TYPES: BetType[] = ['parlay', 'bet_builder', 'super_boost', 'outright']
 
 export function NewBet() {
-  const { bookmakers, players, addBet, addPlayer } = useData()
+  const { bookmakers, players, knockout, addBet, addPlayer } = useData()
   const [bookmakerId, setBookmakerId] = useState(
     () => localStorage.getItem('lastBookmaker') ?? '',
   )
@@ -48,12 +49,26 @@ export function NewBet() {
   const [saved, setSaved] = useState(false)
 
   const playerList = [...players.values()]
-  // autocomplete: every squad player, plus custom ones added earlier
-  const playerOptions = useMemo(() => {
-    const names = new Set(SQUADS.map((p) => p.name))
-    for (const p of players.values()) names.add(p.name)
+
+  /** Both team codes of a match, including user-filled knockout teams. */
+  const matchTeamCodes = (n: number | null): [string, string] | null => {
+    if (n === null) return null
+    const m = matchByNumber.get(n)
+    if (!m) return null
+    const ko = knockout.get(n)
+    const home = m.home ?? ko?.home_code
+    const away = m.away ?? ko?.away_code
+    return home && away ? [home, away] : null
+  }
+
+  /** Autocomplete names: squad players + custom ones, narrowed to the match's teams when known. */
+  const playerOptionsFor = (codes: [string, string] | null): string[] => {
+    const names = new Set<string>()
+    for (const p of SQUADS) if (!codes || codes.includes(p.team)) names.add(p.name)
+    for (const p of players.values()) if (!codes || codes.includes(p.team_code)) names.add(p.name)
     return [...names].sort()
-  }, [players])
+  }
+
   const isOutright = betType === 'outright'
   const isBuilder = betType === 'bet_builder'
   const canAddLegs = MULTI_LEG_TYPES.includes(betType)
@@ -174,18 +189,15 @@ export function NewBet() {
         </div>
       )}
 
-      <datalist id="player-options">
-        {playerOptions.map((name) => (
-          <option key={name} value={name} />
-        ))}
-      </datalist>
-
       {legs.map((leg, i) => {
         const squadMatch = findSquadPlayer(leg.playerName)
         const unknownPlayer =
           leg.playerName.trim() &&
           !squadMatch &&
           !playerList.some((p) => p.name.toLowerCase() === leg.playerName.trim().toLowerCase())
+        const effectiveMatch = isOutright ? null : isBuilder ? builderMatch : leg.matchNumber
+        const codes = matchTeamCodes(effectiveMatch)
+        const isMatchResult = leg.market === 'match_result' && codes !== null
         return (
           <div key={i} className="card space-y-3">
             <div className="flex items-center justify-between">
@@ -208,14 +220,37 @@ export function NewBet() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="lbl">Line (optional)</label>
-                <input className="input" value={leg.line} placeholder="2+ / Over 2.5"
-                  onChange={(e) => updateLeg(i, { line: e.target.value })} />
-              </div>
+              {isMatchResult ? (
+                <div>
+                  <label className="lbl">Outcome</label>
+                  <select className="input"
+                    value={leg.line === 'Draw' ? 'DRAW' : leg.teamCode}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === 'DRAW') updateLeg(i, { teamCode: '', line: 'Draw' })
+                      else updateLeg(i, { teamCode: v, line: leg.line === 'Draw' ? '' : leg.line })
+                    }}>
+                    <option value="">— pick —</option>
+                    <option value={codes![0]}>{teamByCode.get(codes![0])?.name} wins</option>
+                    <option value="DRAW">Draw</option>
+                    <option value={codes![1]}>{teamByCode.get(codes![1])?.name} wins</option>
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="lbl">Line (optional)</label>
+                  <input className="input" value={leg.line} placeholder="2+ / Over 2.5"
+                    onChange={(e) => updateLeg(i, { line: e.target.value })} />
+                </div>
+              )}
               <div>
                 <label className="lbl">Player (optional)</label>
-                <input className="input" list="player-options" value={leg.playerName}
+                <datalist id={`player-options-${i}`}>
+                  {playerOptionsFor(codes).map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+                <input className="input" list={`player-options-${i}`} value={leg.playerName}
                   placeholder="e.g. Depay" onChange={(e) => updateLeg(i, { playerName: e.target.value })} />
               </div>
               {squadMatch ? (
@@ -240,7 +275,7 @@ export function NewBet() {
                   <label className="lbl">Team (optional)</label>
                   <select className="input" value={leg.teamCode} onChange={(e) => updateLeg(i, { teamCode: e.target.value })}>
                     <option value="">—</option>
-                    {TEAMS.map((t) => (
+                    {(codes ? TEAMS.filter((t) => codes.includes(t.code)) : TEAMS).map((t) => (
                       <option key={t.code} value={t.code}>{t.name}</option>
                     ))}
                   </select>
