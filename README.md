@@ -1,73 +1,73 @@
-# React + TypeScript + Vite
+# ⚽ WC 2026 Bet Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Personal betting tracker for the FIFA World Cup 2026. Log bets across
+Bet365, Unibet and BetCity, settle them per leg, and see exactly which
+teams, players, markets and bet types make or lose you money.
 
-Currently, two official plugins are available:
+All 104 official matches are preloaded (kickoff times included). Knockout
+slots show their bracket labels (e.g. *1A – 3CDFGH*) until you fill in the
+real teams from the History tab.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**Stack:** React + TypeScript (Vite) · Tailwind CSS · Recharts · Supabase
+(Postgres + magic-link auth) · deployable free on Vercel.
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Dashboard** — profit, ROI, staked, win rate, profit-over-time chart, and
+  leaderboards by team, player, market, bet type, bookmaker and number of
+  legs. Tap any row to see the bets behind it.
+- **Open bets** — pending bets by kickoff, total at risk and potential payout.
+  Settle per leg (won/lost/void) or enter a cash-out amount.
+- **New bet** — straight, parlay, bet builder, super boost or outright. Pick
+  matches from the schedule; players are created once and autocompleted
+  forever after. Free-bet flag keeps promo money out of your real ROI.
+- **History** — filters on everything, CSV export, knockout bracket editor
+  and bookmaker management.
 
-## Expanding the ESLint configuration
+Profit attribution rules (what makes "Mbappé lost me €40" precise): a won
+bet's profit is split equally over its legs; a lost bet's stake is blamed
+only on the legs that actually lost. Free bets count as €0 risk. The math
+lives in [src/lib/money.ts](src/lib/money.ts) and is unit-tested.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Setup (one time, ~10 minutes)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 1. Supabase (free)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. Create a project at [supabase.com](https://supabase.com).
+2. In the SQL editor, paste and run [supabase/schema.sql](supabase/schema.sql).
+3. Authentication → Sign In / Up: make sure **Email** is enabled
+   (magic links are the default).
+4. Project Settings → API: copy the **Project URL** and **anon public key**.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Run locally
+
+```bash
+cp .env.example .env   # fill in the two values from step 1.4
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Log in with your email, click the magic link, done. The three default
+bookmakers are created automatically on first login.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 3. Deploy to Vercel (free, for your phone)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Import the GitHub repo at [vercel.com](https://vercel.com)
+   (framework preset: **Vite**).
+2. Add the two environment variables from `.env` in the Vercel project
+   settings, then deploy.
+3. In Supabase: Authentication → URL Configuration → set **Site URL** to your
+   Vercel URL so magic links redirect to the deployed app.
+4. On your phone, open the URL and "Add to Home Screen".
+
+## Development
+
+```bash
+npm test        # unit tests (money math)
+npm run lint
+npm run build
 ```
+
+Match and team data are generated from the official schedule by
+[scripts/gen-data.py](scripts/gen-data.py). The design spec lives in
+[docs/superpowers/specs/](docs/superpowers/specs/).
