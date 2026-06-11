@@ -5,7 +5,8 @@ import { useData } from '../lib/data'
 import { legDescription } from '../lib/describe'
 import { eur } from '../lib/format'
 import { deriveStatus, potentialPayout, riskedStake } from '../lib/money'
-import type { Bet, LegResult } from '../lib/types'
+import type { Bet, BetType, LegResult } from '../lib/types'
+import { BET_TYPE_LABELS } from '../lib/types'
 
 function earliestKickoff(bet: Bet): string {
   const times = bet.legs
@@ -40,7 +41,7 @@ export function OpenBets() {
       <div className="grid gap-4 lg:grid-cols-2">
         {open.map((bet) => (
           <BetCard key={bet.id} bet={bet}>
-            <SettlePanel bet={bet} />
+            <BetActions bet={bet} />
           </BetCard>
         ))}
       </div>
@@ -55,9 +56,42 @@ const RESULT_OPTIONS: { value: LegResult; label: string; active: string }[] = [
   { value: 'void', label: '– void', active: 'bg-sky-500/20 text-sky-300' },
 ]
 
-function SettlePanel({ bet }: { bet: Bet }) {
-  const { players, knockout, settleBet, deleteBet } = useData()
-  const [openPanel, setOpenPanel] = useState(false)
+function BetActions({ bet }: { bet: Bet }) {
+  const { deleteBet } = useData()
+  const [panel, setPanel] = useState<'none' | 'settle' | 'edit'>('none')
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <button className="btn-ghost grow" onClick={() => setPanel(panel === 'settle' ? 'none' : 'settle')}>
+          Settle / cash out
+        </button>
+        <button className="btn-ghost" title="Edit bet"
+          onClick={() => setPanel(panel === 'edit' ? 'none' : 'edit')}>
+          ✏️
+        </button>
+        <button className="btn-ghost !border-rose-900/60" title="Delete bet"
+          onClick={async () => {
+            if (!window.confirm('Delete this bet entirely?')) return
+            try {
+              await deleteBet(bet.id)
+            } catch (err) {
+              setError(err instanceof Error ? err.message : String(err))
+            }
+          }}>
+          🗑️
+        </button>
+      </div>
+      {error && <p className="text-sm text-rose-400">{error}</p>}
+      {panel === 'settle' && <SettlePanel bet={bet} onClose={() => setPanel('none')} />}
+      {panel === 'edit' && <EditPanel bet={bet} onClose={() => setPanel('none')} />}
+    </div>
+  )
+}
+
+function SettlePanel({ bet, onClose }: { bet: Bet; onClose: () => void }) {
+  const { players, knockout, settleBet } = useData()
   const [results, setResults] = useState<Record<string, LegResult>>(
     () => Object.fromEntries(bet.legs.map((l) => [l.id, l.result])),
   )
@@ -73,14 +107,6 @@ function SettlePanel({ bet }: { bet: Bet }) {
   const manualEntry = cashout || adjust
   const payoutValue = manualEntry && payout !== '' ? Number(payout) : defaultPayout
   const effectiveStatus = cashout ? 'cashed_out' : derived
-
-  if (!openPanel) {
-    return (
-      <button className="btn-ghost w-full" onClick={() => setOpenPanel(true)}>
-        Settle / cash out
-      </button>
-    )
-  }
 
   const save = async () => {
     setError(null)
@@ -163,15 +189,91 @@ function SettlePanel({ bet }: { bet: Bet }) {
         <button className="btn grow !py-2" onClick={save} disabled={busy}>
           {busy ? 'Saving…' : `Save · ${effectiveStatus.replace('_', ' ')}`}
         </button>
-        <button className="btn-ghost" onClick={() => setOpenPanel(false)}>Cancel</button>
-        <button
-          className="btn-ghost !border-rose-900/60 !text-rose-400"
-          onClick={async () => {
-            if (window.confirm('Delete this bet entirely?')) await deleteBet(bet.id)
-          }}
-        >
-          Delete
+        <button className="btn-ghost" onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+function EditPanel({ bet, onClose }: { bet: Bet; onClose: () => void }) {
+  const { bookmakers, updateBet } = useData()
+  const [bookmakerId, setBookmakerId] = useState(bet.bookmaker_id)
+  const [betType, setBetType] = useState<BetType>(bet.bet_type)
+  const [stake, setStake] = useState(String(bet.stake))
+  const [odds, setOdds] = useState(String(bet.total_odds))
+  const [freeBet, setFreeBet] = useState(bet.is_free_bet)
+  const [notes, setNotes] = useState(bet.notes ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const save = async () => {
+    setError(null)
+    const stakeN = Number(stake)
+    const oddsN = Number(odds)
+    if (!(stakeN > 0)) return setError('Stake must be above €0.')
+    if (!(oddsN >= 1)) return setError('Odds must be 1.00 or higher.')
+    setBusy(true)
+    try {
+      await updateBet(bet.id, {
+        bookmaker_id: bookmakerId,
+        bet_type: betType,
+        stake: stakeN,
+        total_odds: oddsN,
+        is_free_bet: freeBet,
+        notes: notes.trim() || null,
+      })
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-xl border border-white/10 bg-black/30 p-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="lbl">Bookmaker</label>
+          <select className="input" value={bookmakerId} onChange={(e) => setBookmakerId(e.target.value)}>
+            {bookmakers.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="lbl">Bet type</label>
+          <select className="input" value={betType} onChange={(e) => setBetType(e.target.value as BetType)}>
+            {(Object.keys(BET_TYPE_LABELS) as BetType[]).map((t) => (
+              <option key={t} value={t}>{BET_TYPE_LABELS[t]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="lbl">Stake (€)</label>
+          <input className="input" type="number" min="0" step="0.01" inputMode="decimal"
+            value={stake} onChange={(e) => setStake(e.target.value)} />
+        </div>
+        <div>
+          <label className="lbl">Total odds</label>
+          <input className="input" type="number" min="1" step="0.01" inputMode="decimal"
+            value={odds} onChange={(e) => setOdds(e.target.value)} />
+        </div>
+      </div>
+      <label className="flex items-center gap-2 text-sm text-neutral-300">
+        <input type="checkbox" checked={freeBet} onChange={(e) => setFreeBet(e.target.checked)}
+          className="h-4 w-4 accent-emerald-500" />
+        Free bet / promo money
+      </label>
+      <div>
+        <label className="lbl">Notes</label>
+        <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </div>
+      {error && <p className="text-sm text-rose-400">{error}</p>}
+      <div className="flex gap-2">
+        <button className="btn grow !py-2" onClick={save} disabled={busy}>
+          {busy ? 'Saving…' : 'Save changes'}
         </button>
+        <button className="btn-ghost" onClick={onClose}>Cancel</button>
       </div>
     </div>
   )

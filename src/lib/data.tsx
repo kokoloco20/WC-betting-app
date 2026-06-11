@@ -40,6 +40,10 @@ interface DataApi {
     legResults: Record<string, LegResult>,
     opts: { cashedOut?: boolean; payout: number },
   ) => Promise<void>
+  updateBet: (
+    betId: string,
+    fields: Partial<Pick<Bet, 'stake' | 'total_odds' | 'bookmaker_id' | 'bet_type' | 'is_free_bet' | 'notes'>>,
+  ) => Promise<void>
   reopenBet: (bet: Bet) => Promise<void>
   deleteBet: (betId: string) => Promise<void>
   setKnockoutTeams: (matchNumber: number, home: string | null, away: string | null) => Promise<void>
@@ -182,6 +186,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [refresh],
   )
 
+  const updateBet = useCallback(
+    async (
+      betId: string,
+      fields: Partial<Pick<Bet, 'stake' | 'total_odds' | 'bookmaker_id' | 'bet_type' | 'is_free_bet' | 'notes'>>,
+    ) => {
+      const { error } = await supabase!.from('bets').update(fields).eq('id', betId)
+      if (error) throw error
+      await refresh()
+    },
+    [refresh],
+  )
+
   const reopenBet = useCallback(
     async (bet: Bet) => {
       const { error } = await supabase!
@@ -231,6 +247,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addPlayer,
         addBet,
         settleBet,
+        updateBet,
         reopenBet,
         deleteBet,
         setKnockoutTeams,
