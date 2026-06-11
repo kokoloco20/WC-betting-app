@@ -87,13 +87,18 @@ export function Dashboard({ onDrill }: { onDrill: (d: Drill) => void }) {
                     <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#ffffff10" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" stroke="#525252" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#525252" fontSize={11} tickLine={false} axisLine={false} />
+                <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" stroke="#7a7490" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#7a7490" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip
                   formatter={(v) => [eur(Number(v)), 'Profit']}
                   labelFormatter={(l) => `Settled ${l}`}
-                  contentStyle={{ background: '#101513', border: '1px solid #ffffff20', borderRadius: 12 }}
+                  contentStyle={{
+                    background: 'var(--surface-solid)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 12,
+                    color: 'var(--color-neutral-100)',
+                  }}
                 />
                 <Area type="monotone" dataKey="cumulative" stroke="#10b981" strokeWidth={2.5}
                   fill="url(#profitFill)" dot={false} />

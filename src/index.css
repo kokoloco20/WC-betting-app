@@ -4,25 +4,81 @@
   --font-sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
 }
 
+:root {
+  --bg: #0c0a12;
+  --surface: rgb(16 14 24 / 0.75);
+  --surface-solid: rgb(16 14 24 / 0.9);
+  --line: rgb(255 255 255 / 0.08);
+  --field: rgb(0 0 0 / 0.3);
+  --wash: rgb(12 10 18 / 0.55);
+  --chart-grid: rgb(255 255 255 / 0.1);
+  --block-opacity: 1;
+}
+
+/* Light theme: flip the palette. Utilities reference these vars, so
+   translucent whites become translucent darks and text greys invert. */
+[data-theme='light'] {
+  --bg: #eef0f4;
+  --surface: rgb(255 255 255 / 0.78);
+  --surface-solid: rgb(255 255 255 / 0.95);
+  --line: rgb(12 10 18 / 0.1);
+  --field: rgb(12 10 18 / 0.05);
+  --wash: rgb(238 240 244 / 0.78);
+  --chart-grid: rgb(12 10 18 / 0.1);
+  --block-opacity: 0.55;
+
+  --color-white: #14101f;
+  --color-black: #ffffff;
+  --color-neutral-100: #15121f;
+  --color-neutral-200: #272136;
+  --color-neutral-300: #3d3654;
+  --color-neutral-400: #5c5476;
+  --color-neutral-500: #746d8c;
+  --color-neutral-600: #9690aa;
+
+  --color-emerald-300: #047857;
+  --color-emerald-400: #059669;
+  --color-rose-300: #be123c;
+  --color-rose-400: #e11d48;
+  --color-sky-300: #0369a1;
+  --color-amber-400: #b45309;
+  --color-lime-400: #4d7c0f;
+}
+
 body {
-  @apply bg-[#0c0a12] text-neutral-100 antialiased;
+  @apply text-neutral-100 antialiased;
+  background-color: var(--bg);
   font-family: var(--font-sans);
 }
 
 .card {
-  @apply rounded-2xl border border-white/[0.08] bg-[#100e18]/75 p-4 shadow-lg shadow-black/30 backdrop-blur-md;
+  @apply rounded-2xl border p-4 shadow-lg shadow-black/30 backdrop-blur-md;
+  background-color: var(--surface);
+  border-color: var(--line);
+}
+
+[data-theme='light'] .card {
+  @apply shadow-md;
+}
+
+.panel {
+  background-color: var(--surface-solid);
+  border-color: var(--line);
 }
 
 .btn {
-  @apply rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-4 py-2.5 font-semibold text-white shadow-md shadow-emerald-950/50 transition-all hover:from-emerald-400 hover:to-emerald-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
+  @apply rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-4 py-2.5 font-semibold text-[#fff] shadow-md shadow-emerald-950/50 transition-all hover:from-emerald-400 hover:to-emerald-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .btn-ghost {
-  @apply rounded-xl border border-white/10 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:border-emerald-500/40 hover:bg-white/5;
+  @apply rounded-xl border px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:border-emerald-500/40 hover:bg-white/5;
+  border-color: var(--line);
 }
 
 .input {
-  @apply w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-neutral-100 transition-colors focus:border-emerald-500/60 focus:outline-none;
+  @apply w-full rounded-xl border px-3 py-2 text-sm text-neutral-100 transition-colors focus:border-emerald-500/60 focus:outline-none;
+  border-color: var(--line);
+  background-color: var(--field);
 }
 
 .lbl {
@@ -30,7 +86,8 @@ body {
 }
 
 .badge {
-  @apply inline-block rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-neutral-300;
+  @apply inline-block rounded-full border bg-white/5 px-2 py-0.5 text-xs text-neutral-300;
+  border-color: var(--line);
 }
 
 .num {

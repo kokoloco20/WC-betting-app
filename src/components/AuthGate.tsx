@@ -49,7 +49,7 @@ function Frame({ children }: { children: ReactNode }) {
         <div className="absolute -top-24 -left-32 h-[34rem] w-[26rem] rotate-12 rounded-[5rem] bg-violet-700/60" />
         <div className="absolute -right-28 -bottom-24 h-[30rem] w-[24rem] rotate-6 rounded-[5rem] bg-lime-500/45" />
         <div className="absolute -bottom-32 -left-24 h-[26rem] w-[22rem] -rotate-6 rounded-[5rem] bg-emerald-600/50" />
-        <div className="absolute inset-0 bg-[#0c0a12]/55" />
+        <div className="absolute inset-0" style={{ background: 'var(--wash)' }} />
       </div>
       <div className="card space-y-4 !p-6">{children}</div>
     </div>
@@ -60,7 +60,7 @@ function Logo() {
   return (
     <div>
       <h1 className="flex items-center gap-2.5 text-xl font-extrabold tracking-tight">
-        <span className="rounded-lg bg-white px-1.5 py-0.5 leading-none tracking-tighter text-[#0c0a12]">
+        <span className="rounded-lg border border-black/10 bg-[#fff] px-1.5 py-0.5 leading-none tracking-tighter text-[#0c0a12]">
           26
         </span>
         World Cup
