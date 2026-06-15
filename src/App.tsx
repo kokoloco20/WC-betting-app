@@ -3,6 +3,7 @@ import { AuthGate } from './components/AuthGate'
 import { DataProvider, useData } from './lib/data'
 import type { Drill } from './lib/filters'
 import { supabase } from './lib/supabase'
+import { useInstallPrompt } from './lib/useInstallPrompt'
 import { Dashboard } from './screens/Dashboard'
 import { History } from './screens/History'
 import { ImportBets } from './screens/ImportBets'
@@ -36,6 +37,7 @@ function Shell() {
   const [tab, setTab] = useState<Tab>('dashboard')
   const [drill, setDrill] = useState<Drill | null>(null)
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') ?? 'dark')
+  const install = useInstallPrompt()
   const { loadError, refresh } = useData()
 
   useEffect(() => {
@@ -74,6 +76,11 @@ function Shell() {
           </span>
         </h1>
         <div className="flex items-center gap-3">
+          {install && (
+            <button className="btn-ghost !py-1 !text-xs" onClick={() => void install()}>
+              ⬇ Install app
+            </button>
+          )}
           <button
             className="text-base transition-transform hover:scale-110"
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}

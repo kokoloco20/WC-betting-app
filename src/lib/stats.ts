@@ -149,15 +149,22 @@ export function profitByLegCount(bets: Bet[]): LeaderRow[] {
 export interface Highlights {
   streak: number
   streakType: 'won' | 'lost' | null
+  bestStreak: number
   biggestWin: number
   biggestLoss: number
+  biggestBet: number
+  avgOdds: number | null
+  avgStake: number | null
+  settledCount: number
 }
 
-/** Current win/loss streak and best/worst single results (void bets ignored). */
+/** Current and best win streaks, best/worst results, and averages (void bets ignored). */
 export function highlights(bets: Bet[]): Highlights {
   const settled = bets
     .filter((b) => b.status !== 'pending' && b.status !== 'void')
-    .sort((a, b) => (b.settled_at ?? b.placed_at).localeCompare(a.settled_at ?? a.placed_at))
+    .sort((a, b) => betGameDate(b).localeCompare(betGameDate(a))) // newest game first
+
+  // current streak: walk from the most recent settled bet
   let streak = 0
   let streakType: 'won' | 'lost' | null = null
   for (const b of settled) {
@@ -166,12 +173,30 @@ export function highlights(bets: Bet[]): Highlights {
     if (t !== streakType) break
     streak++
   }
+
+  // best winning streak ever
+  let bestStreak = 0
+  let run = 0
+  for (const b of settled) {
+    if ((betProfit(b) ?? 0) > 0) {
+      run++
+      bestStreak = Math.max(bestStreak, run)
+    } else run = 0
+  }
+
   const profits = settled.map((b) => betProfit(b) ?? 0)
+  const allStakes = bets.map((b) => b.stake)
+  const realOdds = bets.map((b) => b.total_odds)
   return {
     streak,
     streakType,
+    bestStreak,
     biggestWin: profits.length ? Math.max(0, ...profits) : 0,
     biggestLoss: profits.length ? Math.min(0, ...profits) : 0,
+    biggestBet: allStakes.length ? Math.max(...allStakes) : 0,
+    avgOdds: realOdds.length ? realOdds.reduce((a, b) => a + b, 0) / realOdds.length : null,
+    avgStake: allStakes.length ? allStakes.reduce((a, b) => a + b, 0) / allStakes.length : null,
+    settledCount: settled.length,
   }
 }
 

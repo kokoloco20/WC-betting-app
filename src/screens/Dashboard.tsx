@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { MATCHES } from '../data/matches'
+import { MatchBetsModal } from '../components/MatchBetsModal'
 import { useData } from '../lib/data'
 import type { Drill } from '../lib/filters'
 import { eur, matchLabel, pct, profitColor, signedEur, stagePrefix } from '../lib/format'
@@ -22,6 +23,7 @@ import {
 
 export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void; onOpenBets: () => void }) {
   const { bets, players, bookmakers, loading } = useData()
+  const [matchModal, setMatchModal] = useState<number | null>(null)
 
   const t = useMemo(() => totals(bets), [bets])
   const record = useMemo(() => {
@@ -139,6 +141,10 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
             </span>
             <span className="badge num">best win <span className="ml-1 text-emerald-400">{signedEur(hl.biggestWin)}</span></span>
             <span className="badge num">worst loss <span className="ml-1 text-rose-400">{signedEur(hl.biggestLoss)}</span></span>
+            {hl.bestStreak > 1 && <span className="badge num">best run <span className="ml-1 text-emerald-400">W{hl.bestStreak}</span></span>}
+            {hl.avgOdds !== null && <span className="badge num">avg odds <span className="ml-1 text-neutral-200">{hl.avgOdds.toFixed(2)}</span></span>}
+            {hl.avgStake !== null && <span className="badge num">avg stake <span className="ml-1 text-neutral-200">{eur(hl.avgStake)}</span></span>}
+            <span className="badge num">biggest bet <span className="ml-1 text-neutral-200">{eur(hl.biggestBet)}</span></span>
           </div>
         </div>
       )}
@@ -174,7 +180,7 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
         </div>
       )}
 
-      <TodayStrip />
+      <TodayStrip onOpenMatch={setMatchModal} />
 
       {/* Heroes & villains */}
       {(teamRows.length > 0 || playerRows.length > 0) && (
@@ -206,6 +212,8 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
           <p className="text-sm text-neutral-400">Hit “New” below and log your first one.</p>
         </div>
       )}
+
+      {matchModal !== null && <MatchBetsModal matchNumber={matchModal} onClose={() => setMatchModal(null)} />}
     </div>
   )
 }
@@ -279,8 +287,8 @@ function BarBoard({ title, rows, onPick }: { title: string; rows: LeaderRow[]; o
   )
 }
 
-function TodayStrip() {
-  const { knockout } = useData()
+function TodayStrip({ onOpenMatch }: { onOpenMatch: (n: number) => void }) {
+  const { knockout, bets } = useData()
   const [today] = useState(() => new Date().toDateString())
   const matches = useMemo(
     () =>
@@ -289,20 +297,37 @@ function TodayStrip() {
       ),
     [today],
   )
+  const betCounts = useMemo(() => {
+    const counts = new Map<number, number>()
+    for (const b of bets) {
+      for (const n of new Set(b.legs.map((l) => l.match_number))) {
+        if (n !== null) counts.set(n, (counts.get(n) ?? 0) + 1)
+      }
+    }
+    return counts
+  }, [bets])
+
   if (matches.length === 0) return null
   return (
     <div className="card !p-3 lg:col-span-2">
-      <p className="lbl ml-1">Today's matches</p>
+      <p className="lbl ml-1">Today's matches · tap to see your bets</p>
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-        {matches.map((m) => (
-          <div key={m.matchNumber} className="shrink-0 rounded-xl border border-white/10 bg-black/30 px-3 py-2">
-            <p className="text-sm font-medium whitespace-nowrap">{matchLabel(m, knockout)}</p>
-            <p className="num text-xs text-neutral-500">
-              {stagePrefix(m)} ·{' '}
-              {new Date(m.kickoffUtc).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
-            </p>
-          </div>
-        ))}
+        {matches.map((m) => {
+          const count = betCounts.get(m.matchNumber) ?? 0
+          return (
+            <button key={m.matchNumber} onClick={() => onOpenMatch(m.matchNumber)}
+              className={`shrink-0 rounded-xl border px-3 py-2 text-left transition-colors active:scale-[0.98] ${
+                count > 0 ? 'border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10' : 'border-white/10 bg-black/30 hover:bg-white/5'
+              }`}>
+              <p className="text-sm font-medium whitespace-nowrap">{matchLabel(m, knockout)}</p>
+              <p className="num text-xs text-neutral-500">
+                {stagePrefix(m)} ·{' '}
+                {new Date(m.kickoffUtc).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
+                {count > 0 && <span className="ml-1.5 text-emerald-400">· {count} bet{count === 1 ? '' : 's'}</span>}
+              </p>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
