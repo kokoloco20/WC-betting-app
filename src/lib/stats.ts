@@ -5,18 +5,21 @@ import type { Bet, Player } from './types'
 import { BET_TYPE_LABELS, MARKET_LABELS } from './types'
 
 /**
- * The day a bet was decided: the latest kickoff among its legs (a parlay
- * resolves once its last match finishes). Outrights with no match fall back
- * to the settlement/placement date.
+ * The day a bet was decided: the latest leg kickoff that wasn't after the bet
+ * was settled. This keeps a lost parlay (decided the moment a leg loses, before
+ * its last game is played) off a future date. Outrights / no-match bets fall
+ * back to the settlement date.
  */
 export function betGameDate(bet: Bet): string {
+  const settled = bet.settled_at ?? bet.placed_at
   let latest: string | null = null
   for (const leg of bet.legs) {
     if (!leg.match_number) continue
     const m = matchByNumber.get(leg.match_number)
-    if (m && (!latest || m.kickoffUtc > latest)) latest = m.kickoffUtc
+    if (!m || m.kickoffUtc > settled) continue // ignore not-yet-played legs
+    if (!latest || m.kickoffUtc > latest) latest = m.kickoffUtc
   }
-  return latest ?? bet.settled_at ?? bet.placed_at
+  return latest ?? settled
 }
 
 export interface Totals {
@@ -211,7 +214,9 @@ export function profitByDay(bets: Bet[]): DayProfit[] {
   for (const b of bets) {
     if (b.status === 'pending') continue
     const date = new Date(betGameDate(b))
-    const key = date.toISOString().slice(0, 10)
+    // key by LOCAL day so it matches the displayed label (a 22:00 UTC kickoff
+    // is already "tomorrow" locally — bucketing by UTC split it into two bars)
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
     const day = date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
     const cur = acc.get(key) ?? { day, profit: 0 }
     cur.profit += betProfit(b) ?? 0

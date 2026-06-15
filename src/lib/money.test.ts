@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { attributeProfit, betProfit, deriveStatus, potentialPayout } from './money'
-import { cumulativeProfit, profitByLegCount, profitByPlayer, profitByTeam, totals } from './stats'
+import { betGameDate, cumulativeProfit, profitByLegCount, profitByPlayer, profitByTeam, totals } from './stats'
 import type { Bet, Leg, LegResult, Market, Player } from './types'
 
 let nextId = 0
@@ -182,13 +182,27 @@ describe('leaderboards', () => {
   })
 })
 
+describe('betGameDate', () => {
+  it('ignores not-yet-played legs so an early-settled parlay is not dated in the future', () => {
+    // a parlay that lost on its match-1 leg (06-11) but still has a match-8 leg
+    // (06-13) ahead; settled the day the losing game was played
+    const b = bet({
+      status: 'lost',
+      payout: 0,
+      settled_at: '2026-06-11T22:00:00Z',
+      legs: [leg('lost', { match_number: 1 }), leg('pending', { match_number: 8 })],
+    })
+    expect(betGameDate(b).slice(0, 10)).toBe('2026-06-11')
+  })
+})
+
 describe('cumulativeProfit', () => {
   it('runs a cumulative total in match-day order, not settle order', () => {
-    // match 1 kicks off 2026-06-11, match 8 on 2026-06-13 — settle dates are
-    // deliberately the reverse, to prove the curve follows the game day
+    // match 1 kicks off 2026-06-11, match 8 on 2026-06-13; both settled after
+    // their game, with settle order reversed, to prove the curve follows the day
     const bets = [
-      bet({ status: 'lost', payout: 0, stake: 10, settled_at: '2026-06-12T00:00:00Z', legs: [leg('lost', { match_number: 8 })] }),
-      bet({ status: 'won', payout: 30, stake: 10, settled_at: '2026-06-20T00:00:00Z', legs: [leg('won', { match_number: 1 })] }),
+      bet({ status: 'lost', payout: 0, stake: 10, settled_at: '2026-06-14T00:00:00Z', legs: [leg('lost', { match_number: 8 })] }),
+      bet({ status: 'won', payout: 30, stake: 10, settled_at: '2026-06-15T00:00:00Z', legs: [leg('won', { match_number: 1 })] }),
     ]
     const points = cumulativeProfit(bets)
     expect(points.map((p) => p.cumulative)).toEqual([20, 10])
