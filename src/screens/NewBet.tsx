@@ -33,7 +33,7 @@ const emptyLeg = (): LegDraft => ({
 const MULTI_LEG_TYPES: BetType[] = ['parlay', 'bet_builder', 'super_boost', 'outright']
 
 export function NewBet() {
-  const { bookmakers, players, knockout, addBet, addPlayer } = useData()
+  const { bookmakers, players, knockout, addBet, getOrCreatePlayer } = useData()
   const [bookmakerId, setBookmakerId] = useState(
     () => localStorage.getItem('lastBookmaker') ?? '',
   )
@@ -101,15 +101,10 @@ export function NewBet() {
         let playerId: string | null = null
         const name = l.playerName.trim()
         if (name) {
-          const existing = playerList.find((p) => p.name.toLowerCase() === name.toLowerCase())
-          if (existing) {
-            playerId = existing.id
-          } else {
-            const squad = findSquadPlayer(name)
-            const team = squad?.team ?? l.playerTeam
-            if (!team) throw new Error(`Pick a team for new player “${name}”.`)
-            playerId = (await addPlayer(squad?.name ?? name, team)).id
-          }
+          // getOrCreatePlayer dedupes by name, so the same player across
+          // multiple bet-builder legs links to one record instead of duplicating
+          const squad = findSquadPlayer(name)
+          playerId = await getOrCreatePlayer(squad?.name ?? name, squad?.team ?? l.playerTeam)
         }
         legInputs.push({
           match_number: isOutright ? null : isBuilder ? builderMatch : l.matchNumber,
@@ -206,6 +201,7 @@ export function NewBet() {
         const effectiveMatch = isOutright ? null : isBuilder ? builderMatch : leg.matchNumber
         const codes = matchTeamCodes(effectiveMatch)
         const isMatchResult = leg.market === 'match_result' && codes !== null
+        const isBtts = leg.market === 'btts'
         return (
           <div key={i} className="card space-y-3">
             <div className="flex items-center justify-between">
@@ -242,6 +238,16 @@ export function NewBet() {
                     <option value={codes![0]}>{teamByCode.get(codes![0])?.name} wins</option>
                     <option value="DRAW">Draw</option>
                     <option value={codes![1]}>{teamByCode.get(codes![1])?.name} wins</option>
+                  </select>
+                </div>
+              ) : isBtts ? (
+                <div>
+                  <label className="lbl">Both teams to score?</label>
+                  <select className="input" value={leg.line}
+                    onChange={(e) => updateLeg(i, { line: e.target.value })}>
+                    <option value="">— pick —</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
                   </select>
                 </div>
               ) : (

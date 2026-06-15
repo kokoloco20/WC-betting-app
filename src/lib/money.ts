@@ -11,9 +11,12 @@ export function betProfit(bet: Bet): number | null {
   return (bet.payout ?? 0) - riskedStake(bet)
 }
 
-/** What the bet returns if every leg wins. */
-export function potentialPayout(bet: Pick<Bet, 'stake' | 'total_odds'>): number {
-  return bet.stake * bet.total_odds
+/**
+ * What you actually receive if every leg wins. For a free / bonus bet the
+ * stake is not returned ("stake not returned"), so you only get the winnings.
+ */
+export function potentialPayout(bet: Pick<Bet, 'stake' | 'total_odds' | 'is_free_bet'>): number {
+  return bet.is_free_bet ? bet.stake * (bet.total_odds - 1) : bet.stake * bet.total_odds
 }
 
 /**

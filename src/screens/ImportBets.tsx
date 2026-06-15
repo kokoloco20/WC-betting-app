@@ -212,7 +212,7 @@ function Review({
   bookmakerId: string
   onBack: () => void
 }) {
-  const { addBet, addPlayer, players, refresh } = useData()
+  const { addBet, getOrCreatePlayer, refresh } = useData()
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<{ ok: number; failed: number } | null>(null)
   const [errors, setErrors] = useState<string[]>([])
@@ -245,17 +245,17 @@ function Review({
   )
   const toImport = bets.filter((b) => !skipped.has(b.id))
 
-  // "type once, reuse after": existing player by name, else create from squad data
+  // "type once, reuse after": dedupes by name; skips linking when no team is known
   const resolvePlayer = async (leg: ParsedBet['legs'][number]): Promise<string | null> => {
     const name = leg.playerName?.trim()
     if (!name) return null
-    const existing = [...players.values()].find((p) => p.name.toLowerCase() === name.toLowerCase())
-    if (existing) return existing.id
-    const team = leg.teamCode ?? leg.homeCode ?? leg.awayCode
     const squad = findSquadPlayer(name)
-    if (squad) return (await addPlayer(squad.name, squad.team)).id
-    if (team) return (await addPlayer(name, team)).id
-    return null
+    const team = squad?.team ?? leg.teamCode ?? leg.homeCode ?? leg.awayCode
+    try {
+      return await getOrCreatePlayer(squad?.name ?? name, team ?? '')
+    } catch {
+      return null // unknown new player with no team — keep the name on the leg instead
+    }
   }
 
   const importAll = async () => {

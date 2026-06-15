@@ -81,6 +81,9 @@ describe('potentialPayout', () => {
   it('is stake times total odds', () => {
     expect(potentialPayout(bet({ stake: 10, total_odds: 3.5 }))).toBe(35)
   })
+  it('excludes the stake for a free bet (stake not returned)', () => {
+    expect(potentialPayout(bet({ stake: 10, total_odds: 3.5, is_free_bet: true }))).toBe(25)
+  })
 })
 
 describe('attributeProfit', () => {

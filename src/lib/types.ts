@@ -21,6 +21,7 @@ export type Market =
 /** The markets offered in the bet form, in display order. */
 export const MARKET_OPTIONS: Market[] = [
   'shots_on_target',
+  'shots',
   'passes',
   'tackles',
   'goals',

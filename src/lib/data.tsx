@@ -35,6 +35,8 @@ interface DataApi {
   refresh: () => Promise<void>
   addBookmaker: (name: string) => Promise<void>
   addPlayer: (name: string, teamCode: string) => Promise<Player>
+  /** Reuse an existing player by name (case-insensitive), or create one. Dedupe-safe across a loop. */
+  getOrCreatePlayer: (name: string, teamCode: string) => Promise<string>
   addBet: (input: NewBetInput) => Promise<void>
   settleBet: (
     bet: Bet,
@@ -68,6 +70,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [bets, setBets] = useState<Bet[]>([])
   const [knockout, setKnockout] = useState<Map<number, KnockoutTeams>>(new Map())
   const seeding = useRef(false)
+  // authoritative players map, updated synchronously so a player created earlier
+  // in a multi-leg submit is seen by later legs (avoids duplicate inserts)
+  const playersRef = useRef<Map<string, Player>>(new Map())
 
   const refresh = useCallback(async () => {
     if (!supabase) return
@@ -101,7 +106,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (bt.error) throw bt.error
       if (ko.error) throw ko.error
       setBookmakers(bk ?? [])
-      setPlayers(new Map((pl.data as Player[]).map((p) => [p.id, p])))
+      const playerMap = new Map((pl.data as Player[]).map((p) => [p.id, p]))
+      playersRef.current = playerMap
+      setPlayers(playerMap)
       setBets(bt.data as Bet[])
       setKnockout(new Map((ko.data as KnockoutTeams[]).map((k) => [k.match_number, k])))
     } catch (err) {
@@ -135,10 +142,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .single()
       if (error) throw error
       const player = data as Player
-      setPlayers((prev) => new Map(prev).set(player.id, player))
+      playersRef.current = new Map(playersRef.current).set(player.id, player)
+      setPlayers(playersRef.current)
       return player
     },
     [],
+  )
+
+  const getOrCreatePlayer = useCallback(
+    async (name: string, teamCode: string) => {
+      const key = name.trim().toLowerCase()
+      for (const p of playersRef.current.values()) {
+        if (p.name.toLowerCase() === key) return p.id
+      }
+      if (!teamCode) throw new Error(`Pick a team for new player “${name.trim()}”.`)
+      return (await addPlayer(name.trim(), teamCode)).id
+    },
+    [addPlayer],
   )
 
   const addBet = useCallback(
@@ -250,6 +270,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         refresh,
         addBookmaker,
         addPlayer,
+        getOrCreatePlayer,
         addBet,
         settleBet,
         updateBet,
