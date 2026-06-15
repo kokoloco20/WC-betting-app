@@ -183,10 +183,12 @@ describe('leaderboards', () => {
 })
 
 describe('cumulativeProfit', () => {
-  it('runs a cumulative total in settlement order', () => {
+  it('runs a cumulative total in match-day order, not settle order', () => {
+    // match 1 kicks off 2026-06-11, match 8 on 2026-06-13 — settle dates are
+    // deliberately the reverse, to prove the curve follows the game day
     const bets = [
-      bet({ status: 'lost', payout: 0, stake: 10, settled_at: '2026-06-14T00:00:00Z', legs: [leg('lost')] }),
-      bet({ status: 'won', payout: 30, stake: 10, settled_at: '2026-06-13T00:00:00Z', legs: [leg('won')] }),
+      bet({ status: 'lost', payout: 0, stake: 10, settled_at: '2026-06-12T00:00:00Z', legs: [leg('lost', { match_number: 8 })] }),
+      bet({ status: 'won', payout: 30, stake: 10, settled_at: '2026-06-20T00:00:00Z', legs: [leg('won', { match_number: 1 })] }),
     ]
     const points = cumulativeProfit(bets)
     expect(points.map((p) => p.cumulative)).toEqual([20, 10])

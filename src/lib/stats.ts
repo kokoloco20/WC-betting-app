@@ -1,7 +1,23 @@
+import { matchByNumber } from '../data/matches'
 import { teamByCode } from '../data/teams'
 import { attributeProfit, betProfit, riskedStake } from './money'
 import type { Bet, Player } from './types'
 import { BET_TYPE_LABELS, MARKET_LABELS } from './types'
+
+/**
+ * The day a bet was decided: the latest kickoff among its legs (a parlay
+ * resolves once its last match finishes). Outrights with no match fall back
+ * to the settlement/placement date.
+ */
+export function betGameDate(bet: Bet): string {
+  let latest: string | null = null
+  for (const leg of bet.legs) {
+    if (!leg.match_number) continue
+    const m = matchByNumber.get(leg.match_number)
+    if (m && (!latest || m.kickoffUtc > latest)) latest = m.kickoffUtc
+  }
+  return latest ?? bet.settled_at ?? bet.placed_at
+}
 
 export interface Totals {
   staked: number
@@ -164,12 +180,12 @@ export interface DayProfit {
   profit: number
 }
 
-/** Profit summed per settlement day, oldest first. */
+/** Profit summed per match day (the day the bet's last game was played), oldest first. */
 export function profitByDay(bets: Bet[]): DayProfit[] {
   const acc = new Map<string, { day: string; profit: number }>()
   for (const b of bets) {
     if (b.status === 'pending') continue
-    const date = new Date(b.settled_at ?? b.placed_at)
+    const date = new Date(betGameDate(b))
     const key = date.toISOString().slice(0, 10)
     const day = date.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })
     const cur = acc.get(key) ?? { day, profit: 0 }
@@ -189,10 +205,11 @@ export interface ProfitPoint {
 export function cumulativeProfit(bets: Bet[]): ProfitPoint[] {
   const settled = bets
     .filter((b) => b.status !== 'pending')
-    .sort((a, b) => (a.settled_at ?? a.placed_at).localeCompare(b.settled_at ?? b.placed_at))
+    .map((b) => ({ bet: b, date: betGameDate(b) }))
+    .sort((a, b) => a.date.localeCompare(b.date))
   let running = 0
-  return settled.map((b) => {
-    running += betProfit(b) ?? 0
-    return { date: b.settled_at ?? b.placed_at, cumulative: running }
+  return settled.map(({ bet, date }) => {
+    running += betProfit(bet) ?? 0
+    return { date, cumulative: running }
   })
 }

@@ -46,19 +46,21 @@ export function History({ drill, onDrillChange }: { drill: Drill | null; onDrill
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<SortKey>('newest')
   const [status, setStatus] = useState('')
+  const [stakeType, setStakeType] = useState('')
 
   const filtered = useMemo(() => {
     const bookmakerName = new Map(bookmakers.map((b) => [b.id, b.name]))
     const q = query.trim().toLowerCase()
     let list = showOpen ? bets : bets.filter((b) => b.status !== 'pending')
     if (status) list = list.filter((b) => b.status === status)
+    if (stakeType) list = list.filter((b) => b.is_free_bet === (stakeType === 'free'))
     if (drill) list = list.filter((b) => matchesDrill(b, drill, players))
     if (q)
       list = list.filter((b) =>
         betSearchText(b, players, knockout, bookmakerName.get(b.bookmaker_id) ?? '').includes(q),
       )
     return [...list].sort(SORTS[sort].cmp)
-  }, [bets, drill, players, knockout, bookmakers, showOpen, query, sort, status])
+  }, [bets, drill, players, knockout, bookmakers, showOpen, query, sort, status, stakeType])
 
   if (loading) return <p className="text-neutral-400">Loading…</p>
 
@@ -98,6 +100,11 @@ export function History({ drill, onDrillChange }: { drill: Drill | null; onDrill
           label="Result" value={status}
           options={[['won', 'Won'], ['lost', 'Lost'], ['cashed_out', 'Cashed out'], ['void', 'Void']]}
           onChange={setStatus}
+        />
+        <FilterSelect
+          label="Stake" value={stakeType}
+          options={[['free', '⚡ Free bets'], ['real', 'Real money']]}
+          onChange={setStakeType}
         />
         <FilterSelect
           label="Bookmaker" value={drill?.kind === 'bookmaker' ? drill.key : ''}
