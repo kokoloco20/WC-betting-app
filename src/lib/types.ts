@@ -9,6 +9,8 @@ export type Market =
   | 'tackles'
   | 'goals'
   | 'assists'
+  | 'goal_or_assist'
+  | 'saves'
   | 'cards'
   | 'corners'
   | 'match_result'
@@ -26,6 +28,8 @@ export const MARKET_OPTIONS: Market[] = [
   'tackles',
   'goals',
   'assists',
+  'goal_or_assist',
+  'saves',
   'match_result',
   'over_under_goals',
   'btts',
@@ -51,6 +55,8 @@ export const MARKET_LABELS: Record<Market, string> = {
   tackles: 'Tackles',
   goals: 'Goals',
   assists: 'Assists',
+  goal_or_assist: 'Goal or assist',
+  saves: 'Saves',
   cards: 'Cards',
   corners: 'Corners',
   match_result: 'Match result',

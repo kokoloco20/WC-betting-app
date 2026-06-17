@@ -86,6 +86,8 @@ const DUTCH_MARKETS: [RegExp, Market][] = [
   [/schoten op doel|shots on target/i, 'shots_on_target'],
   [/hoekschoppen|corners/i, 'corners'],
   [/kaarten|cards|to be carded|booking/i, 'cards'],
+  [/doelpunt of assist|goal\s*(\+|or|\/)\s*assist|scoort of geeft assist/i, 'goal_or_assist'],
+  [/reddingen|\bsaves?\b|keeper saves/i, 'saves'],
   [/doelpuntenmakers|score op elk moment|goalscorers?|anytime scorer|to score/i, 'goals'],
   [/assists?/i, 'assists'],
   [/passes/i, 'passes'],

@@ -38,8 +38,8 @@ create table legs (
   match_number int,
   market text not null check (market in (
     'shots_on_target', 'shots', 'passes', 'tackles', 'goals', 'assists',
-    'cards', 'corners', 'match_result', 'over_under_goals', 'btts',
-    'outright', 'bet_builder', 'other'
+    'goal_or_assist', 'saves', 'cards', 'corners', 'match_result',
+    'over_under_goals', 'btts', 'outright', 'bet_builder', 'other'
   )),
   player_id uuid references players (id),
   team_code text,
