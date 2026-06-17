@@ -112,16 +112,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (pl.error) throw pl.error
       if (bt.error) throw bt.error
       if (ko.error) throw ko.error
-      if (fb.error) throw fb.error
       setBookmakers(bk ?? [])
       const playerMap = new Map((pl.data as Player[]).map((p) => [p.id, p]))
       playersRef.current = playerMap
       setPlayers(playerMap)
       setBets(bt.data as Bet[])
       setKnockout(new Map((ko.data as KnockoutTeams[]).map((k) => [k.match_number, k])))
-      const balanceMap = new Map(
-        (fb.data as { bookmaker_id: string; balance: number }[]).map((r) => [r.bookmaker_id, Number(r.balance)]),
-      )
+      // free_bet_balances may not exist yet (migration 004) — degrade gracefully
+      // rather than breaking the whole data load
+      const balanceRows = fb.error ? [] : (fb.data as { bookmaker_id: string; balance: number }[])
+      const balanceMap = new Map(balanceRows.map((r) => [r.bookmaker_id, Number(r.balance)]))
       balancesRef.current = balanceMap
       setFreeBetBalances(balanceMap)
     } catch (err) {
