@@ -18,7 +18,8 @@ function earliestKickoff(bet: Bet): string {
 }
 
 export function OpenBets() {
-  const { bets, players, knockout, bookmakers, loading } = useData()
+  const { bets, players, knockout, bookmakers, freeBetBalances, loading } = useData()
+  const [view, setView] = useState<'open' | 'freebets'>('open')
   const [query, setQuery] = useState('')
   const open = useMemo(() => {
     const bookmakerName = new Map(bookmakers.map((b) => [b.id, b.name]))
@@ -30,34 +31,114 @@ export function OpenBets() {
   }, [bets, query, players, knockout, bookmakers])
   const atRisk = open.reduce((s, b) => s + riskedStake(b), 0)
   const potential = open.reduce((s, b) => s + potentialPayout(b), 0)
+  const totalFreeBet = bookmakers.reduce((s, b) => s + (freeBetBalances.get(b.id) ?? 0), 0)
 
   if (loading) return <p className="text-neutral-400">Loading…</p>
 
   return (
     <div className="space-y-4">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold">Open bets</h2>
-        <p className="num text-sm text-neutral-400">
-          {eur(atRisk)} at risk · <span className="text-emerald-400">{eur(potential)}</span> potential
-        </p>
+      <div className="flex gap-1 rounded-xl border border-white/10 bg-black/30 p-1 text-sm font-medium">
+        {([['open', `⏳ Open (${open.length})`], ['freebets', `⚡ Free bets (${eur(totalFreeBet)})`]] as const).map(
+          ([v, label]) => (
+            <button key={v} onClick={() => setView(v)}
+              className={`grow rounded-lg py-1.5 transition-colors ${
+                view === v ? 'bg-emerald-500/20 text-emerald-300' : 'text-neutral-500 hover:text-neutral-300'
+              }`}>
+              {label}
+            </button>
+          ),
+        )}
       </div>
-      <input className="input" placeholder="🔍 Search team, player, market…"
-        value={query} onChange={(e) => setQuery(e.target.value)} />
-      {open.length === 0 && (
-        <p className="text-neutral-400">{query ? 'No bets match your search.' : 'No open bets. 🎉'}</p>
+
+      {view === 'freebets' ? (
+        <FreeBetBalances />
+      ) : (
+        <>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-lg font-semibold">Open bets</h2>
+            <p className="num text-sm text-neutral-400">
+              {eur(atRisk)} at risk · <span className="text-emerald-400">{eur(potential)}</span> potential
+            </p>
+          </div>
+          <input className="input" placeholder="🔍 Search team, player, market…"
+            value={query} onChange={(e) => setQuery(e.target.value)} />
+          {open.length === 0 && (
+            <p className="text-neutral-400">{query ? 'No bets match your search.' : 'No open bets. 🎉'}</p>
+          )}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {open.map((bet) => (
+              <BetCard key={bet.id} bet={bet}>
+                {isReadyToSettle(bet) && (
+                  <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
+                    ⏱️ Matches finished — ready to settle
+                  </p>
+                )}
+                <BetActions bet={bet} />
+              </BetCard>
+            ))}
+          </div>
+        </>
       )}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {open.map((bet) => (
-          <BetCard key={bet.id} bet={bet}>
-            {isReadyToSettle(bet) && (
-              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
-                ⏱️ Matches finished — ready to settle
-              </p>
-            )}
-            <BetActions bet={bet} />
-          </BetCard>
-        ))}
-      </div>
+    </div>
+  )
+}
+
+function FreeBetBalances() {
+  const { bookmakers, freeBetBalances, setFreeBetBalance } = useData()
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const save = async (bookmakerId: string, raw: string) => {
+    const value = Number(raw)
+    if (raw.trim() === '' || Number.isNaN(value) || value < 0) return setError('Enter an amount of € 0 or more.')
+    setBusy(bookmakerId)
+    setError(null)
+    try {
+      await setFreeBetBalance(bookmakerId, value)
+      setDrafts((d) => {
+        const next = { ...d }
+        delete next[bookmakerId]
+        return next
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-neutral-400">
+        Your remaining free-bet credit per bookmaker. Placing a free bet automatically subtracts its
+        stake here.
+      </p>
+      {bookmakers.map((b) => {
+        const current = freeBetBalances.get(b.id) ?? 0
+        const draft = drafts[b.id]
+        const dirty = draft !== undefined && Number(draft) !== current
+        return (
+          <div key={b.id} className="card flex items-center gap-3">
+            <span className="grow font-medium">{b.name}</span>
+            <div className="relative">
+              <span className="pointer-events-none absolute top-2 left-3 text-sm text-neutral-500">€</span>
+              <input
+                className="input num w-28 pl-6 text-right"
+                type="number" min="0" step="0.01" inputMode="decimal"
+                value={draft ?? current}
+                onChange={(e) => setDrafts((d) => ({ ...d, [b.id]: e.target.value }))}
+              />
+            </div>
+            <button className="btn !py-2 disabled:opacity-30"
+              disabled={!dirty || busy === b.id}
+              onClick={() => save(b.id, draft ?? String(current))}>
+              {busy === b.id ? '…' : 'Save'}
+            </button>
+          </div>
+        )
+      })}
+      {error && <p className="text-sm text-rose-400">{error}</p>}
     </div>
   )
 }

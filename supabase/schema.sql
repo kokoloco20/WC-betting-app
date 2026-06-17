@@ -47,6 +47,14 @@ create table legs (
   result text not null default 'pending' check (result in ('pending', 'won', 'lost', 'void'))
 );
 
+-- Remaining free-bet credit per bookmaker.
+create table free_bet_balances (
+  user_id uuid not null default auth.uid() references auth.users (id),
+  bookmaker_id uuid not null references bookmakers (id) on delete cascade,
+  balance numeric not null default 0,
+  primary key (user_id, bookmaker_id)
+);
+
 -- Knockout bracket slots the user fills in once teams are known.
 create table knockout_teams (
   user_id uuid not null default auth.uid() references auth.users (id),
@@ -61,6 +69,7 @@ alter table players enable row level security;
 alter table bets enable row level security;
 alter table legs enable row level security;
 alter table knockout_teams enable row level security;
+alter table free_bet_balances enable row level security;
 
 create policy "own rows" on bookmakers for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
@@ -71,4 +80,6 @@ create policy "own rows" on bets for all
 create policy "own rows" on legs for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "own rows" on knockout_teams for all
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy "own rows" on free_bet_balances for all
   using (user_id = auth.uid()) with check (user_id = auth.uid());

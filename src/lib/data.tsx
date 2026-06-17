@@ -32,6 +32,10 @@ interface DataApi {
   players: Map<string, Player>
   bets: Bet[]
   knockout: Map<number, KnockoutTeams>
+  /** Remaining free-bet credit per bookmaker id. */
+  freeBetBalances: Map<string, number>
+  setFreeBetBalance: (bookmakerId: string, balance: number) => Promise<void>
+  adjustFreeBetBalance: (bookmakerId: string, delta: number) => Promise<void>
   refresh: () => Promise<void>
   addBookmaker: (name: string) => Promise<void>
   addPlayer: (name: string, teamCode: string) => Promise<Player>
@@ -69,6 +73,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [players, setPlayers] = useState<Map<string, Player>>(new Map())
   const [bets, setBets] = useState<Bet[]>([])
   const [knockout, setKnockout] = useState<Map<number, KnockoutTeams>>(new Map())
+  const [freeBetBalances, setFreeBetBalances] = useState<Map<string, number>>(new Map())
+  const balancesRef = useRef<Map<string, number>>(new Map())
   const seeding = useRef(false)
   // authoritative players map, updated synchronously so a player created earlier
   // in a multi-leg submit is seen by later legs (avoids duplicate inserts)
@@ -94,23 +100,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (again.error) throw again.error
         bk = again.data
       }
-      const [pl, bt, ko] = await Promise.all([
+      const [pl, bt, ko, fb] = await Promise.all([
         supabase.from('players').select('id, name, team_code').order('name'),
         supabase
           .from('bets')
           .select('*, legs(*)')
           .order('placed_at', { ascending: false }),
         supabase.from('knockout_teams').select('match_number, home_code, away_code'),
+        supabase.from('free_bet_balances').select('bookmaker_id, balance'),
       ])
       if (pl.error) throw pl.error
       if (bt.error) throw bt.error
       if (ko.error) throw ko.error
+      if (fb.error) throw fb.error
       setBookmakers(bk ?? [])
       const playerMap = new Map((pl.data as Player[]).map((p) => [p.id, p]))
       playersRef.current = playerMap
       setPlayers(playerMap)
       setBets(bt.data as Bet[])
       setKnockout(new Map((ko.data as KnockoutTeams[]).map((k) => [k.match_number, k])))
+      const balanceMap = new Map(
+        (fb.data as { bookmaker_id: string; balance: number }[]).map((r) => [r.bookmaker_id, Number(r.balance)]),
+      )
+      balancesRef.current = balanceMap
+      setFreeBetBalances(balanceMap)
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -147,6 +160,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return player
     },
     [],
+  )
+
+  const setFreeBetBalance = useCallback(async (bookmakerId: string, balance: number) => {
+    const rounded = Math.round(balance * 100) / 100
+    const { error } = await supabase!
+      .from('free_bet_balances')
+      .upsert({ bookmaker_id: bookmakerId, balance: rounded }, { onConflict: 'user_id,bookmaker_id' })
+    if (error) throw error
+    balancesRef.current = new Map(balancesRef.current).set(bookmakerId, rounded)
+    setFreeBetBalances(balancesRef.current)
+  }, [])
+
+  const adjustFreeBetBalance = useCallback(
+    async (bookmakerId: string, delta: number) => {
+      const current = balancesRef.current.get(bookmakerId) ?? 0
+      await setFreeBetBalance(bookmakerId, current + delta)
+    },
+    [setFreeBetBalance],
   )
 
   const getOrCreatePlayer = useCallback(
@@ -267,6 +298,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         players,
         bets,
         knockout,
+        freeBetBalances,
+        setFreeBetBalance,
+        adjustFreeBetBalance,
         refresh,
         addBookmaker,
         addPlayer,

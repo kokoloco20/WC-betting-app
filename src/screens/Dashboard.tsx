@@ -166,8 +166,9 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
                     background: 'var(--surface-solid)',
                     border: '1px solid var(--line)',
                     borderRadius: 12,
-                    color: 'var(--color-neutral-100)',
                   }}
+                  labelStyle={{ color: 'var(--color-neutral-100)' }}
+                  itemStyle={{ color: 'var(--color-neutral-100)' }}
                 />
                 <Bar dataKey="profit" radius={[6, 6, 0, 0]}>
                   {days.map((d, i) => (

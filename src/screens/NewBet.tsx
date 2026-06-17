@@ -4,6 +4,7 @@ import { matchByNumber } from '../data/matches'
 import { SQUADS } from '../data/players'
 import { TEAMS, teamByCode } from '../data/teams'
 import { useData } from '../lib/data'
+import { eur } from '../lib/format'
 import type { BetType, Market } from '../lib/types'
 import { BET_TYPE_LABELS, BET_TYPE_OPTIONS, MARKET_LABELS, MARKET_OPTIONS } from '../lib/types'
 
@@ -33,7 +34,7 @@ const emptyLeg = (): LegDraft => ({
 const MULTI_LEG_TYPES: BetType[] = ['parlay', 'bet_builder', 'super_boost', 'outright']
 
 export function NewBet() {
-  const { bookmakers, players, knockout, addBet, getOrCreatePlayer } = useData()
+  const { bookmakers, players, knockout, addBet, getOrCreatePlayer, freeBetBalances, adjustFreeBetBalance } = useData()
   const [bookmakerId, setBookmakerId] = useState(
     () => localStorage.getItem('lastBookmaker') ?? '',
   )
@@ -124,6 +125,8 @@ export function NewBet() {
         notes: notes.trim() || null,
         legs: legInputs,
       })
+      // free bet placed → take it off this bookie's free-bet balance
+      if (freeBet) await adjustFreeBetBalance(bookmakerId, -stakeN)
       localStorage.setItem('lastBookmaker', bookmakerId)
       setStake('')
       setOdds('')
@@ -177,6 +180,11 @@ export function NewBet() {
           <input type="checkbox" checked={freeBet} onChange={(e) => setFreeBet(e.target.checked)}
             className="h-4 w-4 accent-emerald-500" />
           Free bet / promo money (your own money is not at risk)
+          {freeBet && bookmakerId && (
+            <span className="text-xs text-amber-400">
+              · saldo {eur(freeBetBalances.get(bookmakerId) ?? 0)}
+            </span>
+          )}
         </label>
         <label className="col-span-2 flex items-center gap-2 text-sm text-neutral-300">
           <input type="checkbox" checked={superBoost} onChange={(e) => setSuperBoost(e.target.checked)}
