@@ -12,6 +12,7 @@ export interface NewLegInput {
   player_id: string | null
   team_code: string | null
   line: string | null
+  custom_event: string | null
 }
 
 export interface NewBetInput {

@@ -86,6 +86,8 @@ export interface Leg {
   player_id: string | null
   team_code: string | null
   line: string | null
+  /** Free-text description for a non-World-Cup event (darts, tennis, …). */
+  custom_event: string | null
   result: LegResult
 }
 

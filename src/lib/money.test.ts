@@ -13,6 +13,7 @@ function leg(result: LegResult, extra: Partial<Leg> = {}): Leg {
     player_id: null,
     team_code: null,
     line: null,
+    custom_event: null,
     result,
     ...extra,
   }

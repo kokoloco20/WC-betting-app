@@ -44,6 +44,7 @@ create table legs (
   player_id uuid references players (id),
   team_code text,
   line text,
+  custom_event text, -- free-text description for non-WC events (darts, tennis, …)
   result text not null default 'pending' check (result in ('pending', 'won', 'lost', 'void'))
 );
 

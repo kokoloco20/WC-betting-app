@@ -36,7 +36,7 @@ export function betsToCsv(
       rows.push(
         [
           ...base,
-          match ? matchLabel(match, knockout) : '',
+          match ? matchLabel(match, knockout) : (leg.custom_event ?? ''),
           leg.market,
           player?.name,
           leg.team_code ? (teamByCode.get(leg.team_code)?.name ?? leg.team_code) : '',

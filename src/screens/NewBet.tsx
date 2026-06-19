@@ -20,6 +20,7 @@ interface LegDraft {
   playerTeam: string
   teamCode: string
   line: string
+  event: string
 }
 
 const emptyLeg = (): LegDraft => ({
@@ -29,6 +30,7 @@ const emptyLeg = (): LegDraft => ({
   playerTeam: '',
   teamCode: '',
   line: '',
+  event: '',
 })
 
 const MULTI_LEG_TYPES: BetType[] = ['parlay', 'bet_builder', 'super_boost', 'outright']
@@ -43,6 +45,7 @@ export function NewBet() {
   const [odds, setOdds] = useState('')
   const [freeBet, setFreeBet] = useState(false)
   const [superBoost, setSuperBoost] = useState(false)
+  const [otherEvent, setOtherEvent] = useState(false)
   const [notes, setNotes] = useState('')
   const [builderMatch, setBuilderMatch] = useState<number | null>(null)
   const [legs, setLegs] = useState<LegDraft[]>([emptyLeg()])
@@ -91,14 +94,30 @@ export function NewBet() {
     if (!bookmakerId) return setError('Pick a bookmaker.')
     if (!(stakeN > 0)) return setError('Enter a stake above €0.')
     if (!(oddsN >= 1)) return setError('Enter total odds of 1.00 or higher.')
-    if (isBuilder && builderMatch === null) return setError('Pick the match for this bet builder.')
-    if (!isOutright && !isBuilder && legs.some((l) => l.matchNumber === null))
-      return setError('Every leg needs a match.')
+    if (otherEvent) {
+      if (legs.some((l) => !l.event.trim())) return setError('Describe each leg (e.g. “Darts — Van Gerwen to win”).')
+    } else {
+      if (isBuilder && builderMatch === null) return setError('Pick the match for this bet builder.')
+      if (!isOutright && !isBuilder && legs.some((l) => l.matchNumber === null))
+        return setError('Every leg needs a match.')
+    }
 
     setSaving(true)
     try {
       const legInputs = []
       for (const l of legs) {
+        if (otherEvent) {
+          // non-WC event: just the free-text description, no match/team/player
+          legInputs.push({
+            match_number: null,
+            market: 'other' as Market,
+            player_id: null,
+            team_code: null,
+            line: null,
+            custom_event: l.event.trim(),
+          })
+          continue
+        }
         let playerId: string | null = null
         const name = l.playerName.trim()
         if (name) {
@@ -113,6 +132,7 @@ export function NewBet() {
           player_id: playerId,
           team_code: l.teamCode || null,
           line: l.line.trim() || null,
+          custom_event: null,
         })
       }
       await addBet({
@@ -136,6 +156,7 @@ export function NewBet() {
       setBuilderMatch(null)
       setLegs([emptyLeg()])
       setSaved(true)
+      // keep otherEvent on — likely logging several external bets in a row
     } catch (err) {
       // keep all form state so nothing is lost — fix and press save again
       setError(err instanceof Error ? err.message : String(err))
@@ -191,9 +212,15 @@ export function NewBet() {
             className="h-4 w-4 accent-amber-500" />
           ⚡ Super boost (the bookie boosted the odds)
         </label>
+        <label className="col-span-2 flex items-center gap-2 text-sm text-neutral-300">
+          <input type="checkbox" checked={otherEvent}
+            onChange={(e) => { setOtherEvent(e.target.checked); setLegs([emptyLeg()]) }}
+            className="h-4 w-4 accent-violet-500" />
+          🎯 Other event (darts, tennis… not a World Cup match)
+        </label>
       </div>
 
-      {isBuilder && (
+      {!otherEvent && isBuilder && (
         <div className="card">
           <label className="lbl">Match (all legs)</label>
           <MatchSelect value={builderMatch} onChange={setBuilderMatch} />
@@ -210,6 +237,28 @@ export function NewBet() {
         const codes = matchTeamCodes(effectiveMatch)
         const isMatchResult = leg.market === 'match_result' && codes !== null
         const isBtts = leg.market === 'btts'
+
+        if (otherEvent) {
+          return (
+            <div key={i} className="card space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="lbl mb-0">Leg {i + 1}</span>
+                {legs.length > 1 && (
+                  <button className="text-xs text-red-400" onClick={() => setLegs((ls) => ls.filter((_, j) => j !== i))}>
+                    remove
+                  </button>
+                )}
+              </div>
+              <div>
+                <label className="lbl">Selection / event</label>
+                <input className="input" value={leg.event}
+                  placeholder="e.g. Darts WK — Van Gerwen wint 3-0"
+                  onChange={(e) => updateLeg(i, { event: e.target.value })} />
+              </div>
+            </div>
+          )
+        }
+
         return (
           <div key={i} className="card space-y-3">
             <div className="flex items-center justify-between">

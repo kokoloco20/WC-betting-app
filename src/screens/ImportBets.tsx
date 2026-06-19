@@ -275,6 +275,7 @@ function Review({
             team_code: l.teamCode,
             // keep the player's name visible if we couldn't link him
             line: !playerId && l.playerName ? [l.playerName, l.line].filter(Boolean).join(' ') : l.line,
+            custom_event: null,
           })
         }
         await addBet({

@@ -9,6 +9,10 @@ export function legDescription(
   players: Map<string, Player>,
   knockout: Map<number, KnockoutTeams>,
 ): { main: string; context: string | null } {
+  // non-World-Cup event: just the free-text the user typed
+  if (leg.custom_event) {
+    return { main: [leg.custom_event, leg.line].filter(Boolean).join(' '), context: 'Other event' }
+  }
   const parts: string[] = []
   if (leg.player_id) parts.push(players.get(leg.player_id)?.name ?? 'Unknown player')
   else if (leg.team_code) parts.push(teamName(leg.team_code)!)
