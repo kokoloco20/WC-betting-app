@@ -31,15 +31,20 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
     const wins = settled.filter((b) => (betProfit(b) ?? 0) > 0).length
     return { wins, losses: settled.length - wins, open: bets.length - settled.length }
   }, [bets])
-  const series = useMemo(
-    () =>
-      cumulativeProfit(bets).map((p, i) => ({
-        ...p,
-        n: i + 1,
-        label: new Date(p.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }),
-      })),
-    [bets],
-  )
+  const series = useMemo(() => {
+    // collapse the per-bet running total to one point per day (keeps the day's
+    // final total) so a busy day shows once, not five times, and it fits the card
+    const byDay = new Map<string, { label: string; cumulative: number }>()
+    for (const p of cumulativeProfit(bets)) {
+      const d = new Date(p.date)
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+      byDay.set(key, {
+        label: d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }),
+        cumulative: p.cumulative,
+      })
+    }
+    return [...byDay.values()]
+  }, [bets])
   const bookmakerNames = useMemo(() => new Map(bookmakers.map((b) => [b.id, b.name])), [bookmakers])
 
   const teamRows = useMemo(() => profitByTeam(bets, players), [bets, players])
@@ -102,12 +107,8 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
       {/* Profit curve */}
       {series.length > 1 && (
         <div className="card min-w-0">
-          <div className="mb-1 flex items-baseline justify-between">
-            <p className="lbl mb-0">Profit over time</p>
-            {series.length > 10 && <p className="text-[11px] text-neutral-500">swipe ↔</p>}
-          </div>
-          <div className="overflow-x-auto">
-          <div className="h-44" style={{ minWidth: `${Math.max(series.length * 34, 280)}px` }}>
+          <p className="lbl">Profit over time</p>
+          <div className="h-44">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
                 <defs>
@@ -120,8 +121,7 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
                 <XAxis dataKey="label" stroke="#7a7490" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="#7a7490" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip
-                  formatter={(v) => [eur(Number(v)), 'Profit']}
-                  labelFormatter={(l) => `Settled ${l}`}
+                  formatter={(v) => [eur(Number(v)), 'Total profit']}
                   contentStyle={{
                     background: 'var(--surface-solid)',
                     border: '1px solid var(--line)',
@@ -133,7 +133,6 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
                   fill="url(#profitFill)" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
           </div>
         </div>
       )}
