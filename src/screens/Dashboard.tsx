@@ -67,7 +67,9 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
   const days = profitByDay(bets)
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    // grid-cols-1 (minmax(0,1fr)) constrains each column so a wide scrollable
+    // chart scrolls inside its card instead of stretching the whole page
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       {/* Bets whose matches have finished */}
       {readyCount > 0 && (
         <button
@@ -99,7 +101,7 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
 
       {/* Profit curve */}
       {series.length > 1 && (
-        <div className="card">
+        <div className="card min-w-0">
           <div className="mb-1 flex items-baseline justify-between">
             <p className="lbl mb-0">Profit over time</p>
             {series.length > 10 && <p className="text-[11px] text-neutral-500">swipe ↔</p>}
@@ -156,7 +158,7 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
 
       {/* Profit per day */}
       {days.length > 1 && (
-        <div className="card">
+        <div className="card min-w-0">
           <div className="mb-1 flex items-baseline justify-between">
             <p className="lbl mb-0">Profit per day</p>
             {days.length > 8 && <p className="text-[11px] text-neutral-500">swipe ↔</p>}
