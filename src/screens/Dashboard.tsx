@@ -100,8 +100,12 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
       {/* Profit curve */}
       {series.length > 1 && (
         <div className="card">
-          <p className="lbl">Profit over time</p>
-          <div className="h-44">
+          <div className="mb-1 flex items-baseline justify-between">
+            <p className="lbl mb-0">Profit over time</p>
+            {series.length > 10 && <p className="text-[11px] text-neutral-500">swipe ↔</p>}
+          </div>
+          <div className="overflow-x-auto">
+          <div className="h-44" style={{ minWidth: `${Math.max(series.length * 34, 280)}px` }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
                 <defs>
@@ -128,6 +132,7 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          </div>
         </div>
       )}
 
@@ -152,8 +157,12 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
       {/* Profit per day */}
       {days.length > 1 && (
         <div className="card">
-          <p className="lbl">Profit per day</p>
-          <div className="h-40">
+          <div className="mb-1 flex items-baseline justify-between">
+            <p className="lbl mb-0">Profit per day</p>
+            {days.length > 8 && <p className="text-[11px] text-neutral-500">swipe ↔</p>}
+          </div>
+          <div className="overflow-x-auto">
+          <div className="h-40" style={{ minWidth: `${Math.max(days.length * 50, 280)}px` }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={days} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
                 <CartesianGrid stroke="var(--chart-grid)" strokeDasharray="3 3" vertical={false} />
@@ -177,6 +186,7 @@ export function Dashboard({ onDrill, onOpenBets }: { onDrill: (d: Drill) => void
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
           </div>
         </div>
       )}

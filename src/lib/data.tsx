@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- provider + hook live together */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
+import { KNOCKOUT_RESULTS } from '../data/knockout-results'
 import { deriveStatus } from './money'
 import type { Bet, BetStatus, BetType, Bookmaker, KnockoutTeams, Leg, LegResult, Market, Player } from './types'
 
@@ -118,7 +119,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       playersRef.current = playerMap
       setPlayers(playerMap)
       setBets(bt.data as Bet[])
-      setKnockout(new Map((ko.data as KnockoutTeams[]).map((k) => [k.match_number, k])))
+      // seed known knockout teams as defaults; a user's own edits override them
+      const koMap = new Map<number, KnockoutTeams>()
+      for (const [mn, t] of Object.entries(KNOCKOUT_RESULTS)) {
+        koMap.set(Number(mn), { match_number: Number(mn), home_code: t.home_code, away_code: t.away_code })
+      }
+      for (const k of ko.data as KnockoutTeams[]) koMap.set(k.match_number, k)
+      setKnockout(koMap)
       // free_bet_balances may not exist yet (migration 004) — degrade gracefully
       // rather than breaking the whole data load
       const balanceRows = fb.error ? [] : (fb.data as { bookmaker_id: string; balance: number }[])
