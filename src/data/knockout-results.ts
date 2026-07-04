@@ -20,4 +20,13 @@ export const KNOCKOUT_RESULTS: Record<number, { home_code: string; away_code: st
   86: { home_code: 'ARG', away_code: 'CPV' },
   87: { home_code: 'COL', away_code: 'GHA' },
   88: { home_code: 'AUS', away_code: 'EGY' },
+  // Round of 16
+  89: { home_code: 'PAR', away_code: 'FRA' },
+  90: { home_code: 'CAN', away_code: 'MAR' },
+  91: { home_code: 'BRA', away_code: 'NOR' },
+  92: { home_code: 'MEX', away_code: 'ENG' },
+  93: { home_code: 'POR', away_code: 'ESP' },
+  94: { home_code: 'USA', away_code: 'BEL' },
+  95: { home_code: 'ARG', away_code: 'EGY' },
+  96: { home_code: 'SUI', away_code: 'COL' },
 }
