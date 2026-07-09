@@ -29,4 +29,9 @@ export const KNOCKOUT_RESULTS: Record<number, { home_code: string; away_code: st
   94: { home_code: 'USA', away_code: 'BEL' },
   95: { home_code: 'ARG', away_code: 'EGY' },
   96: { home_code: 'SUI', away_code: 'COL' },
+  // Quarter-finals
+  97: { home_code: 'FRA', away_code: 'MAR' },
+  98: { home_code: 'ESP', away_code: 'BEL' },
+  99: { home_code: 'NOR', away_code: 'ENG' },
+  100: { home_code: 'ARG', away_code: 'SUI' },
 }
