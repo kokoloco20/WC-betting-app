@@ -37,4 +37,7 @@ export const KNOCKOUT_RESULTS: Record<number, { home_code: string; away_code: st
   // Semi-finals
   101: { home_code: 'FRA', away_code: 'ESP' },
   102: { home_code: 'ENG', away_code: 'ARG' },
+  // Third-place play-off and final
+  103: { home_code: 'FRA', away_code: 'ENG' },
+  104: { home_code: 'ESP', away_code: 'ARG' },
 }
